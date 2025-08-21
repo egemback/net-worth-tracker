@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Asset {
+  id                   Int       @id @default(autoincrement())
+  name                 String
+  category             String     // e.g., Cash, Investments, Real Estate, Crypto
+  value                Decimal
+  currency             String     @default("USD")
+  growthRate           Float?     // expected annual growth rate in % (e.g., 5 = 5%)
+  monthlyContribution  Decimal?   // monthly contribution amount
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+}
+
+model Liability {
+  id             Int       @id @default(autoincrement())
+  name           String
+  category       String     // e.g., Mortgage, Loan, Credit Card
+  balance        Decimal
+  interestRate   Float?     // APR in %
+  monthlyPayment Decimal?   // scheduled monthly payment
+  termMonths     Int?       // optional term for amortization
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model Snapshot {
+  id         Int       @id @default(autoincrement())
+  date       DateTime  @default(now())
+  netWorth   Decimal
+  notes      String?
+}
+
