@@ -2,11 +2,41 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PieChart, LineChart } from "@/components/Charts";
 
-async function getData() {
-  const [assets, liabilities] = await Promise.all([
-    prisma.asset.findMany(),
-    prisma.liability.findMany(),
-  ]);
+async function getData(year?: number, month?: number) {
+  let assets: any[], liabilities: any[];
+
+  if (year && month) {
+    // Get snapshot data for specific month
+    const snapshot = await prisma.snapshot.findUnique({
+      where: { year_month: { year, month } },
+      include: { assets: true, liabilities: true },
+    });
+
+    if (snapshot) {
+      assets = snapshot.assets;
+      liabilities = snapshot.liabilities;
+    } else {
+      // No snapshot exists for this month
+      assets = [];
+      liabilities = [];
+    }
+  } else {
+    // Get latest snapshot data
+    const snapshot = await prisma.snapshot.findFirst({
+      orderBy: [{ year: "desc" }, { month: "desc" }],
+      include: { assets: true, liabilities: true },
+    });
+
+    if (snapshot) {
+      assets = snapshot.assets;
+      liabilities = snapshot.liabilities;
+    } else {
+      // No snapshots exist at all
+      assets = [];
+      liabilities = [];
+    }
+  }
+
   const totalAssets = assets.reduce((s, a) => s + Number(a.value), 0);
   const totalLiabilities = liabilities.reduce(
     (s, l) => s + Number(l.balance),
@@ -17,23 +47,36 @@ async function getData() {
 }
 
 async function getHistory() {
-  const snaps = await prisma.snapshot.findMany({ orderBy: { date: "asc" } });
+  const snaps = await prisma.snapshot.findMany({
+    orderBy: [{ year: "asc" }, { month: "asc" }],
+  });
   return snaps.map((s) => ({
-    month: new Date(s.date).toLocaleDateString(undefined, {
-      year: "2-digit",
-      month: "short",
-    }),
+    month: `${s.month.toString().padStart(2, "0")}/${s.year
+      .toString()
+      .slice(-2)}`,
     netWorth: Number(s.netWorth),
   }));
 }
 
-export default async function Home() {
-  const { totalAssets, totalLiabilities, netWorth } = await getData();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const year = typeof sp?.year === "string" ? parseInt(sp.year) : undefined;
+  const month = typeof sp?.month === "string" ? parseInt(sp.month) : undefined;
+
+  const { totalAssets, totalLiabilities, netWorth } = await getData(
+    year,
+    month
+  );
   const history = await getHistory();
   const composition = [
     { name: "Assets", value: totalAssets },
     { name: "Liabilities", value: totalLiabilities },
   ];
+
   return (
     <main className="space-y-6">
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -86,9 +129,6 @@ export default async function Home() {
         >
           Forecast & Scenarios
         </Link>
-        <form action={"/api/snapshots/create"} method="post">
-          <button className="rounded border px-4 py-2">Create Snapshot</button>
-        </form>
         <a href="/api/snapshots/export" className="rounded border px-4 py-2">
           Export Snapshots (CSV)
         </a>

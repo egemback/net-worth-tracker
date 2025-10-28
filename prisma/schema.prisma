@@ -7,34 +7,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Snapshot {
+  id          Int              @id @default(autoincrement())
+  month       Int
+  year        Int
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  assets      Asset[]
+  liabilities Liability[]
+  netWorth    Float?
+
+  @@unique([year, month])
+}
+
 model Asset {
-  id                   Int       @id @default(autoincrement())
-  name                 String
-  category             String     // e.g., Cash, Investments, Real Estate, Crypto
-  value                Decimal
-  currency             String     @default("USD")
-  growthRate           Float?     // expected annual growth rate in % (e.g., 5 = 5%)
-  monthlyContribution  Decimal?   // monthly contribution amount
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
+  id          Int       @id @default(autoincrement())
+  snapshotId  Int
+  snapshot    Snapshot  @relation(fields: [snapshotId], references: [id])
+  assetId     Int?
+  name        String
+  category    String
+  value       Float
+  growthRate  Float?
+  monthlyContribution Float?
 }
 
 model Liability {
-  id             Int       @id @default(autoincrement())
-  name           String
-  category       String     // e.g., Mortgage, Loan, Credit Card
-  balance        Decimal
-  interestRate   Float?     // APR in %
-  monthlyPayment Decimal?   // scheduled monthly payment
-  termMonths     Int?       // optional term for amortization
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id              Int       @id @default(autoincrement())
+  snapshotId      Int
+  snapshot        Snapshot  @relation(fields: [snapshotId], references: [id])
+  liabilityId     Int?
+  name            String
+  category        String
+  balance         Float
+  interestRate    Float?
+  monthlyPayment  Float?
+  termMonths      Int?
 }
-
-model Snapshot {
-  id         Int       @id @default(autoincrement())
-  date       DateTime  @default(now())
-  netWorth   Decimal
-  notes      String?
-}
-

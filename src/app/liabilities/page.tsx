@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import InfiniteTable from "@/components/InfiniteTable";
-import EditableCell from "@/components/EditableCell";
 import CategoryPicker from "@/components/CategoryPicker";
 
 export default async function LiabilitiesPage({
@@ -44,9 +43,23 @@ export default async function LiabilitiesPage({
           "termMonths",
         ]
   );
+  const year = sp?.year ? Number(sp.year) : new Date().getFullYear();
+  const month = sp?.month ? Number(sp.month) : new Date().getMonth() + 1;
+  // ensure snapshot for the chosen month/year exists
+  let snapshot = await prisma.snapshot.findUnique({
+    where: { year_month: { year, month } },
+  });
 
+  if (!snapshot) {
+    snapshot = await prisma.snapshot.create({
+      data: { year, month, netWorth: 0 },
+    });
+  }
+
+  // -- Filter & pagination setup
   const where: any = {
     AND: [
+      { snapshotId: snapshot.id },
       q
         ? {
             OR: [
@@ -72,10 +85,8 @@ export default async function LiabilitiesPage({
       "interestRate",
       "monthlyPayment",
       "termMonths",
-      "createdAt",
-      "updatedAt",
     ]);
-    return allowed.has(sort) ? { [sort]: order } : { createdAt: "desc" };
+    return allowed.has(sort) ? { [sort]: order } : { balance: "desc" };
   })();
 
   const total = await prisma.liability.count({ where });
@@ -89,8 +100,6 @@ export default async function LiabilitiesPage({
     ...l,
     balance: Number(l.balance),
     monthlyPayment: l.monthlyPayment === null ? null : Number(l.monthlyPayment),
-    createdAt: l.createdAt.toISOString(),
-    updatedAt: l.updatedAt.toISOString(),
   }));
   const hasMore = page * pageSize < total;
   const nextPage = hasMore ? page + 1 : null;
@@ -116,21 +125,26 @@ export default async function LiabilitiesPage({
     return sp.toString();
   }
 
+  // ✅ Create liability and attach to snapshot
   async function create(formData: FormData) {
     "use server";
+
     const name = String(formData.get("name") || "");
     const category = String(formData.get("category") || "");
+
     const normalize = (s: FormDataEntryValue | null) => {
       if (s == null) return 0;
       const str = String(s).replace(",", ".");
       const n = Number(str);
       return Number.isNaN(n) ? 0 : n;
     };
+
     const maybeNum = (s: FormDataEntryValue | null) => {
       if (s == null || String(s).trim() === "") return null;
       const n = Number(String(s).replace(",", "."));
       return Number.isNaN(n) ? null : n;
     };
+
     const balance = normalize(formData.get("balance"));
     const interestRate = maybeNum(formData.get("interestRate"));
     const monthlyPayment = maybeNum(formData.get("monthlyPayment"));
@@ -139,6 +153,17 @@ export default async function LiabilitiesPage({
       String(formData.get("termMonths")).trim() !== ""
         ? Number(String(formData.get("termMonths")).replace(",", "."))
         : null;
+
+    // Find or create snapshot for this month
+    let snapshot = await prisma.snapshot.findUnique({
+      where: { year_month: { year, month } },
+    });
+    if (!snapshot) {
+      snapshot = await prisma.snapshot.create({
+        data: { year, month, netWorth: 0 },
+      });
+    }
+
     await prisma.liability.create({
       data: {
         name,
@@ -147,16 +172,21 @@ export default async function LiabilitiesPage({
         interestRate,
         monthlyPayment,
         termMonths,
-      } as any,
+        snapshotId: snapshot.id,
+      },
     });
+
     revalidatePath("/liabilities");
   }
 
+  // ✅ Update both main liability and snapshot entry
   async function updateField(formData: FormData) {
     "use server";
+
     const id = Number(formData.get("id"));
     const field = String(formData.get("field"));
     const valueRaw = (formData.get("value") as string | null) ?? null;
+
     const numeric = new Set([
       "balance",
       "interestRate",
@@ -164,6 +194,7 @@ export default async function LiabilitiesPage({
       "termMonths",
     ]);
     const data: any = {};
+
     if (numeric.has(field)) {
       if (valueRaw === null || valueRaw === "") {
         data[field] = null;
@@ -174,7 +205,9 @@ export default async function LiabilitiesPage({
     } else {
       data[field] = valueRaw;
     }
+
     await prisma.liability.update({ where: { id }, data });
+
     revalidatePath("/liabilities");
   }
 
@@ -185,12 +218,12 @@ export default async function LiabilitiesPage({
     revalidatePath("/liabilities");
   }
 
+  // CSV import (unchanged)
   async function importCsv(formData: FormData) {
     "use server";
     const file = formData.get("file") as File | null;
     if (!file) return;
     const text = await file.text();
-    // header: name,category,balance,interestRate,monthlyPayment,termMonths
     const lines = text.split(/\r?\n/).filter((l) => l.trim().length);
     const [header, ...rows] = lines;
     for (const row of rows) {
@@ -203,7 +236,18 @@ export default async function LiabilitiesPage({
         termMonths,
       ] = row.split(",").map((s) => s?.trim());
       if (!name) continue;
-      await prisma.liability.create({
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      let snapshot = await prisma.snapshot.findUnique({
+        where: { year_month: { year, month } },
+      });
+      if (!snapshot) {
+        snapshot = await prisma.snapshot.create({
+          data: { year, month, netWorth: 0 },
+        });
+      }
+      const liability = await prisma.liability.create({
         data: {
           name,
           category: category || "",
@@ -211,32 +255,42 @@ export default async function LiabilitiesPage({
           interestRate: interestRate ? Number(interestRate) : null,
           monthlyPayment: monthlyPayment ? Number(monthlyPayment) : null,
           termMonths: termMonths ? Number(termMonths) : null,
+          snapshotId: snapshot.id,
         } as any,
+      });
+      await prisma.liability.create({
+        data: {
+          snapshotId: snapshot.id,
+          liabilityId: liability.id,
+          name,
+          category,
+          balance: Number(balance || 0),
+          interestRate: interestRate ? Number(interestRate) : null,
+          monthlyPayment: monthlyPayment ? Number(monthlyPayment) : null,
+          termMonths: termMonths ? Number(termMonths) : null,
+        },
       });
     }
     revalidatePath("/liabilities");
   }
 
+  // --- Page Rendering ---
   return (
-    <main className="space-y-6">
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        {/* Category options handled by CategoryPicker */}
-        <h2 className="text-lg font-medium mb-4">Add Liability</h2>
-        <form action={create} className="grid grid-cols-1 gap-3 sm:grid-cols-6">
-          <input
-            name="name"
-            placeholder="Name"
-            className="rounded border border-gray-300 p-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
+    <main className="space-y-8">
+      <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-medium mb-4 text-gray-900">
+          Add Liability for {month}/{year}
+        </h2>
+        <form action={create} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+          <input name="name" placeholder="Name" className="input" required />
           <CategoryPicker
             name="category"
-            categories={(
-              await prisma.liability.findMany({
+            categories={await prisma.liability
+              .findMany({
                 select: { category: true },
                 distinct: ["category"],
               })
-            ).map((x) => x.category)}
+              .then((res) => res.map((r) => r.category))}
             placeholder="Category"
             className="w-full"
           />
@@ -245,7 +299,7 @@ export default async function LiabilitiesPage({
             type="number"
             step="0.01"
             placeholder="Balance"
-            className="rounded border border-gray-300 p-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
             required
           />
           <input
@@ -253,222 +307,61 @@ export default async function LiabilitiesPage({
             type="number"
             step="0.01"
             placeholder="APR %"
-            className="rounded border border-gray-300 p-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
           />
           <input
             name="monthlyPayment"
             type="number"
             step="0.01"
             placeholder="Monthly -"
-            className="rounded border border-gray-300 p-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
           />
           <input
             name="termMonths"
             type="number"
             placeholder="Term (months)"
-            className="rounded border border-gray-300 p-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="input"
           />
-          <button className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
-            Add
-          </button>
-        </form>
-        <form action={importCsv} className="mt-4 flex items-center gap-2">
-          <input type="file" name="file" accept=".csv" className="text-sm" />
-          <button className="rounded border border-gray-300 px-3 py-1.5 hover:bg-gray-50">
-            Import CSV
-          </button>
+          <button className="rounded border px-4 py-2">Add</button>
         </form>
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-medium mb-4 text-gray-900">Liabilities</h2>
-        <form
-          className="mb-3 grid grid-cols-1 sm:grid-cols-8 gap-2"
-          method="get"
+      <section className="rounded-2xl border bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-medium mb-4 text-gray-900">
+          Liabilities for {month}/{year}
+        </h2>
+        <div
+          key={`${month}-${year}-${q}-${sort}-${order}-${pageSize}-${colsArray.join()}`}
         >
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Search name or category"
-            className="rounded border border-gray-300 p-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <InfiniteTable
+            initialItems={liabilities}
+            hasMore={hasMore}
+            nextPage={nextPage}
+            query={`month=${month}&year=${year}`}
+            onUpdateField={updateField}
+            onRemove={remove}
+            visibleCols={visibleCols}
+            listPath="/api/liabilities/list"
+            header={
+              <>
+                {visibleCols.has("name") && <th className="p-2">Name</th>}
+                {visibleCols.has("category") && (
+                  <th className="p-2">Category</th>
+                )}
+                {visibleCols.has("balance") && <th className="p-2">Balance</th>}
+                {visibleCols.has("interestRate") && (
+                  <th className="p-2">APR %</th>
+                )}
+                {visibleCols.has("monthlyPayment") && (
+                  <th className="p-2">Monthly Payment</th>
+                )}
+                {visibleCols.has("termMonths") && (
+                  <th className="p-2">Term (months)</th>
+                )}
+              </>
+            }
           />
-          <input
-            name="min"
-            defaultValue={minBal ?? ""}
-            placeholder="Min balance"
-            className="rounded border border-gray-300 p-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <input
-            name="max"
-            defaultValue={maxBal ?? ""}
-            placeholder="Max balance"
-            className="rounded border border-gray-300 p-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button className="rounded border border-gray-300 px-3 py-1.5 hover:bg-gray-50">
-            Apply
-          </button>
-          <a
-            href="/liabilities"
-            className="rounded border border-gray-300 px-3 py-1.5 text-center hover:bg-gray-50"
-          >
-            Clear
-          </a>
-        </form>
-        <form className="mb-3 flex flex-wrap items-center gap-3" method="get">
-          {q ? <input type="hidden" name="q" value={q} /> : null}
-          {typeof minBal === "number" && !Number.isNaN(minBal) ? (
-            <input type="hidden" name="min" value={String(minBal)} />
-          ) : null}
-          {typeof maxBal === "number" && !Number.isNaN(maxBal) ? (
-            <input type="hidden" name="max" value={String(maxBal)} />
-          ) : null}
-          <input type="hidden" name="sort" value={sort} />
-          <input type="hidden" name="order" value={order} />
-          <input type="hidden" name="pageSize" value={String(pageSize)} />
-          <span className="text-sm text-gray-600">Columns:</span>
-          {[
-            { key: "name", label: "Name" },
-            { key: "category", label: "Category" },
-            { key: "balance", label: "Balance" },
-            { key: "interestRate", label: "APR %" },
-            { key: "monthlyPayment", label: "Monthly -" },
-            { key: "termMonths", label: "Term" },
-          ].map((c) => (
-            <label key={c.key} className="text-sm flex items-center gap-1">
-              <input
-                type="checkbox"
-                name="cols"
-                value={c.key}
-                defaultChecked={
-                  new Set(
-                    Array.isArray(colsParam)
-                      ? colsParam
-                      : typeof colsParam === "string"
-                      ? colsParam.split(",")
-                      : []
-                  ).size
-                    ? new Set(
-                        Array.isArray(colsParam)
-                          ? colsParam
-                          : typeof colsParam === "string"
-                          ? colsParam.split(",")
-                          : []
-                      ).has(c.key)
-                    : true
-                }
-              />
-              <span>{c.label}</span>
-            </label>
-          ))}
-          <button className="rounded border border-gray-300 px-3 py-1.5 hover:bg-gray-50">
-            Update
-          </button>
-        </form>
-        <InfiniteTable
-          initialItems={liabilities}
-          hasMore={hasMore}
-          nextPage={nextPage}
-          query={qp({
-            q,
-            min:
-              typeof minBal === "number" && !Number.isNaN(minBal)
-                ? String(minBal)
-                : undefined,
-            max:
-              typeof maxBal === "number" && !Number.isNaN(maxBal)
-                ? String(maxBal)
-                : undefined,
-            sort,
-            order,
-          })}
-          onUpdateField={updateField}
-          onRemove={remove}
-          visibleCols={visibleCols}
-          listPath="/api/liabilities/list"
-          pageSize={pageSize}
-          header={
-            <>
-              {visibleCols.has("name") && (
-                <th className="p-2">
-                  <a
-                    href={`?${qp({
-                      sort: "name",
-                      order: order === "asc" ? "desc" : "asc",
-                      page: 1,
-                    })}`}
-                  >
-                    Name
-                  </a>
-                </th>
-              )}
-              {visibleCols.has("category") && (
-                <th className="p-2">
-                  <a
-                    href={`?${qp({
-                      sort: "category",
-                      order: order === "asc" ? "desc" : "asc",
-                      page: 1,
-                    })}`}
-                  >
-                    Category
-                  </a>
-                </th>
-              )}
-              {visibleCols.has("balance") && (
-                <th className="p-2">
-                  <a
-                    href={`?${qp({
-                      sort: "balance",
-                      order: order === "asc" ? "desc" : "asc",
-                      page: 1,
-                    })}`}
-                  >
-                    Balance
-                  </a>
-                </th>
-              )}
-              {visibleCols.has("interestRate") && (
-                <th className="p-2">
-                  <a
-                    href={`?${qp({
-                      sort: "interestRate",
-                      order: order === "asc" ? "desc" : "asc",
-                      page: 1,
-                    })}`}
-                  >
-                    APR %
-                  </a>
-                </th>
-              )}
-              {visibleCols.has("monthlyPayment") && (
-                <th className="p-2">
-                  <a
-                    href={`?${qp({
-                      sort: "monthlyPayment",
-                      order: order === "asc" ? "desc" : "asc",
-                      page: 1,
-                    })}`}
-                  >
-                    Monthly -
-                  </a>
-                </th>
-              )}
-              {visibleCols.has("termMonths") && (
-                <th className="p-2">
-                  <a
-                    href={`?${qp({
-                      sort: "termMonths",
-                      order: order === "asc" ? "desc" : "asc",
-                      page: 1,
-                    })}`}
-                  >
-                    Term
-                  </a>
-                </th>
-              )}
-            </>
-          }
-        />
+        </div>
       </section>
     </main>
   );

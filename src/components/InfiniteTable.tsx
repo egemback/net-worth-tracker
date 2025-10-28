@@ -19,8 +19,6 @@ export default function InfiniteTable({
   onRemove,
   visibleCols,
   header,
-  sortKey,
-  sortOrder,
   listPath,
   pageSize,
 }: any) {

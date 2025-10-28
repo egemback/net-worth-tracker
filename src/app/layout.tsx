@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ToastHub from "@/components/ToastHub";
+import MonthSelector from "@/components/MonthSelector";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
       >
-        <div className="mx-auto max-w-7xl p-6">
+        <div className="mx-auto max-w-7xl p-6 space-y-6">
           <header className="mb-6 flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-gray-900">
               Net Worth Tracker
@@ -49,8 +49,8 @@ export default function RootLayout({
               </a>
             </nav>
           </header>
+          <MonthSelector />
           {children}
-          <ToastHub />
         </div>
       </body>
     </html>
