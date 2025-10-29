@@ -49,12 +49,15 @@ async function getData(year?: number, month?: number) {
 async function getHistory() {
   const snaps = await prisma.snapshot.findMany({
     orderBy: [{ year: "asc" }, { month: "asc" }],
+    include: { assets: true, liabilities: true },
   });
   return snaps.map((s) => ({
     month: `${s.month.toString().padStart(2, "0")}/${s.year
       .toString()
       .slice(-2)}`,
-    netWorth: Number(s.netWorth),
+    netWorth:
+      Number(s.assets.reduce((sum, a) => sum + Number(a.value), 0)) -
+      s.liabilities.reduce((sum, l) => sum + Number(l.balance), 0),
   }));
 }
 
@@ -72,6 +75,9 @@ export default async function Home({
     month
   );
   const history = await getHistory();
+  const cleanHistory = history.filter(
+    (h) => h.netWorth !== null && h.netWorth != 0
+  );
   const composition = [
     { name: "Assets", value: totalAssets },
     { name: "Liabilities", value: totalLiabilities },
@@ -102,7 +108,7 @@ export default async function Home({
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-lg border bg-white p-4 shadow-sm">
           <h3 className="mb-2 font-medium">Net Worth (last 12 months)</h3>
-          <LineChart data={history} xKey="month" yKey="netWorth" />
+          <LineChart data={cleanHistory} xKey="month" yKey="netWorth" />
         </div>
         <div className="rounded-lg border bg-white p-4 shadow-sm">
           <h3 className="mb-2 font-medium">Composition</h3>
