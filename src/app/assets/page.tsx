@@ -57,9 +57,9 @@ export default async function AssetsPage({
           }
         : {},
     ],
-  } as any;
+  };
 
-  const orderBy: any = (() => {
+  const orderBy = (() => {
     const allowed = new Set([
       "name",
       "category",
@@ -68,7 +68,7 @@ export default async function AssetsPage({
       "monthlyContribution",
     ]);
     return allowed.has(sort) ? { [sort]: order } : { value: "desc" };
-  })();
+  })() as { [key: string]: "asc" | "desc" };
 
   const rawAssets = await prisma.asset.findMany({
     where,

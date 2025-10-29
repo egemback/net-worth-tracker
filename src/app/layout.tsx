@@ -35,7 +35,7 @@ export default function RootLayout({
               Net Worth Tracker
             </h1>
             <nav className="text-sm text-gray-800 space-x-4">
-              <a href="/" className="hover:underline">
+              <a href="/dashboard" className="hover:underline">
                 Dashboard
               </a>
               <a href="/assets" className="hover:underline">

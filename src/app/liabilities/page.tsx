@@ -46,7 +46,7 @@ export default async function LiabilitiesPage({
   }
 
   // -- Filter & pagination setup
-  const where: any = {
+  const where = {
     AND: [
       { snapshotId: snapshot.id },
       q
@@ -60,7 +60,7 @@ export default async function LiabilitiesPage({
     ],
   };
 
-  const orderBy: any = (() => {
+  const orderBy = (() => {
     const allowed = new Set([
       "name",
       "category",
@@ -70,7 +70,7 @@ export default async function LiabilitiesPage({
       "termMonths",
     ]);
     return allowed.has(sort) ? { [sort]: order } : { balance: "desc" };
-  })();
+  })() as { [key: string]: "asc" | "desc" };
 
   const rawLiabilities = await prisma.liability.findMany({
     where,
