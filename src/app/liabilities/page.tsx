@@ -10,8 +10,6 @@ export default async function LiabilitiesPage({
 }) {
   const sp = await searchParams;
   const q = typeof sp?.q === "string" ? sp.q.trim() : "";
-  const minBal = typeof sp?.min === "string" ? Number(sp.min) : undefined;
-  const maxBal = typeof sp?.max === "string" ? Number(sp.max) : undefined;
   const sort = typeof sp?.sort === "string" ? sp.sort : "createdAt";
   const order =
     typeof sp?.order === "string" && (sp.order === "asc" || sp.order === "desc")
@@ -25,26 +23,17 @@ export default async function LiabilitiesPage({
     typeof sp?.pageSize === "string"
       ? Math.min(100, Math.max(5, parseInt(sp.pageSize as string, 10) || 20))
       : 20;
-  const colsParam = sp?.cols;
-  const colsArray = Array.isArray(colsParam)
-    ? colsParam
-    : typeof colsParam === "string"
-    ? colsParam.split(",")
-    : [];
-  const visibleCols = new Set(
-    colsArray.length
-      ? colsArray
-      : [
-          "name",
-          "category",
-          "balance",
-          "interestRate",
-          "monthlyPayment",
-          "termMonths",
-        ]
-  );
+  const visibleCols = new Set([
+    "name",
+    "category",
+    "balance",
+    "interestRate",
+    "monthlyPayment",
+    "termMonths",
+  ]);
   const year = sp?.year ? Number(sp.year) : new Date().getFullYear();
   const month = sp?.month ? Number(sp.month) : new Date().getMonth() + 1;
+
   // ensure snapshot for the chosen month/year exists
   let snapshot = await prisma.snapshot.findUnique({
     where: { year_month: { year, month } },
@@ -68,12 +57,6 @@ export default async function LiabilitiesPage({
             ],
           }
         : {},
-      typeof minBal === "number" && !Number.isNaN(minBal)
-        ? { balance: { gte: minBal as any } }
-        : {},
-      typeof maxBal === "number" && !Number.isNaN(maxBal)
-        ? { balance: { lte: maxBal as any } }
-        : {},
     ],
   };
 
@@ -89,7 +72,6 @@ export default async function LiabilitiesPage({
     return allowed.has(sort) ? { [sort]: order } : { balance: "desc" };
   })();
 
-  const total = await prisma.liability.count({ where });
   const rawLiabilities = await prisma.liability.findMany({
     where,
     orderBy,
@@ -101,31 +83,23 @@ export default async function LiabilitiesPage({
     balance: Number(l.balance),
     monthlyPayment: l.monthlyPayment === null ? null : Number(l.monthlyPayment),
   }));
-  const hasMore = page * pageSize < total;
+  const tableHash = liabilities.reduce(
+    (lcc, l) =>
+      lcc +
+      l.id +
+      Number(l.balance) +
+      Number(l.monthlyPayment || 0) +
+      Number(l.interestRate || 0) +
+      Number(l.termMonths || 0) +
+      l.name.length +
+      l.category.length,
+    0
+  );
+
+  const hasMore = page * pageSize < liabilities.length;
   const nextPage = hasMore ? page + 1 : null;
 
-  function qp(
-    overrides: Record<string, string | number | undefined | string[]>
-  ) {
-    const sp = new URLSearchParams();
-    if (q) sp.set("q", q);
-    if (typeof minBal === "number" && !Number.isNaN(minBal))
-      sp.set("min", String(minBal));
-    if (typeof maxBal === "number" && !Number.isNaN(maxBal))
-      sp.set("max", String(maxBal));
-    if (sort) sp.set("sort", sort);
-    if (order) sp.set("order", order);
-    sp.set("pageSize", String(pageSize));
-    if (colsArray.length) sp.set("cols", colsArray.join(","));
-    Object.entries(overrides).forEach(([k, v]) => {
-      if (v === undefined) return;
-      if (Array.isArray(v)) sp.set(k, v.join(","));
-      else sp.set(k, String(v));
-    });
-    return sp.toString();
-  }
-
-  // ✅ Create liability and attach to snapshot
+  // Create liability and attach to snapshot
   async function create(formData: FormData) {
     "use server";
 
@@ -179,7 +153,7 @@ export default async function LiabilitiesPage({
     revalidatePath("/liabilities");
   }
 
-  // ✅ Update both main liability and snapshot entry
+  // Update both main liability and snapshot entry
   async function updateField(formData: FormData) {
     "use server";
 
@@ -218,59 +192,47 @@ export default async function LiabilitiesPage({
     revalidatePath("/liabilities");
   }
 
-  // CSV import (unchanged)
-  async function importCsv(formData: FormData) {
+  // COPY FROM LAST MONTH
+  async function copyFromLastMonth() {
     "use server";
-    const file = formData.get("file") as File | null;
-    if (!file) return;
-    const text = await file.text();
-    const lines = text.split(/\r?\n/).filter((l) => l.trim().length);
-    const [header, ...rows] = lines;
-    for (const row of rows) {
-      const [
-        name,
-        category,
-        balance,
-        interestRate,
-        monthlyPayment,
-        termMonths,
-      ] = row.split(",").map((s) => s?.trim());
-      if (!name) continue;
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-      let snapshot = await prisma.snapshot.findUnique({
-        where: { year_month: { year, month } },
-      });
-      if (!snapshot) {
-        snapshot = await prisma.snapshot.create({
-          data: { year, month, netWorth: 0 },
-        });
-      }
-      const liability = await prisma.liability.create({
-        data: {
-          name,
-          category: category || "",
-          balance: Number(balance || 0),
-          interestRate: interestRate ? Number(interestRate) : null,
-          monthlyPayment: monthlyPayment ? Number(monthlyPayment) : null,
-          termMonths: termMonths ? Number(termMonths) : null,
-          snapshotId: snapshot.id,
-        } as any,
-      });
-      await prisma.liability.create({
-        data: {
-          snapshotId: snapshot.id,
-          liabilityId: liability.id,
-          name,
-          category,
-          balance: Number(balance || 0),
-          interestRate: interestRate ? Number(interestRate) : null,
-          monthlyPayment: monthlyPayment ? Number(monthlyPayment) : null,
-          termMonths: termMonths ? Number(termMonths) : null,
-        },
+    let prevYear = year;
+    let prevMonth = month - 1;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear -= 1;
+    }
+
+    const prevSnapshot = await prisma.snapshot.findUnique({
+      where: { year_month: { year: prevYear, month: prevMonth } },
+      include: { liabilities: true },
+    });
+
+    if (!prevSnapshot) return;
+
+    const existingLiabilities = await prisma.asset.findMany({
+      where: { snapshotId: snapshot!.id },
+      select: { name: true },
+    });
+    const existingNames = new Set(existingLiabilities.map((a) => a.name));
+
+    const newLiabilities = prevSnapshot.liabilities.filter(
+      (a) => !existingNames.has(a.name)
+    );
+
+    if (newLiabilities.length > 0) {
+      await prisma.liability.createMany({
+        data: newLiabilities.map((l) => ({
+          name: l.name,
+          category: l.category,
+          balance: l.balance,
+          interestRate: l.interestRate,
+          monthlyPayment: l.monthlyPayment,
+          termMonths: l.termMonths,
+          snapshotId: snapshot!.id,
+        })),
       });
     }
+
     revalidatePath("/liabilities");
   }
 
@@ -327,12 +289,17 @@ export default async function LiabilitiesPage({
       </section>
 
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-medium mb-4 text-gray-900">
-          Liabilities for {month}/{year}
-        </h2>
-        <div
-          key={`${month}-${year}-${q}-${sort}-${order}-${pageSize}-${colsArray.join()}`}
-        >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-medium mb-4 text-gray-900">
+            Liabilities for {month}/{year}
+          </h2>
+          <form action={copyFromLastMonth}>
+            <button type="submit" className="rounded border px-4 py-2">
+              Copy from Last Month
+            </button>
+          </form>
+        </div>
+        <div key={`${tableHash}`}>
           <InfiniteTable
             initialItems={liabilities}
             hasMore={hasMore}

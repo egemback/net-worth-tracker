@@ -24,8 +24,6 @@ export default async function AssetsPage({
     });
   }
 
-  const minVal = typeof sp?.min === "string" ? Number(sp.min) : undefined;
-  const maxVal = typeof sp?.max === "string" ? Number(sp.max) : undefined;
   const sort = typeof sp?.sort === "string" ? sp.sort : "createdAt";
   const order =
     typeof sp?.order === "string" && (sp.order === "asc" || sp.order === "desc")
@@ -39,17 +37,13 @@ export default async function AssetsPage({
     typeof sp?.pageSize === "string"
       ? Math.min(100, Math.max(5, parseInt(sp.pageSize as string, 10) || 20))
       : 20;
-  const colsParam = sp?.cols;
-  const colsArray = Array.isArray(colsParam)
-    ? colsParam
-    : typeof colsParam === "string"
-    ? colsParam.split(",")
-    : [];
-  const visibleCols = new Set(
-    colsArray.length
-      ? colsArray
-      : ["name", "category", "value", "growthRate", "monthlyContribution"]
-  );
+  const visibleCols = new Set([
+    "name",
+    "category",
+    "value",
+    "growthRate",
+    "monthlyContribution",
+  ]);
 
   const where = {
     AND: [
@@ -61,12 +55,6 @@ export default async function AssetsPage({
               { category: { contains: q, mode: "insensitive" } },
             ],
           }
-        : {},
-      typeof minVal === "number" && !Number.isNaN(minVal)
-        ? { value: { gte: minVal as any } }
-        : {},
-      typeof maxVal === "number" && !Number.isNaN(maxVal)
-        ? { value: { lte: maxVal as any } }
         : {},
     ],
   } as any;
@@ -82,26 +70,34 @@ export default async function AssetsPage({
     return allowed.has(sort) ? { [sort]: order } : { value: "desc" };
   })();
 
-  const total = await prisma.asset.count({ where });
-
   const rawAssets = await prisma.asset.findMany({
     where,
     orderBy,
     skip: (page - 1) * pageSize,
     take: pageSize,
   });
-
   const assets = rawAssets.map((a) => ({
     ...a,
     value: Number(a.value),
     monthlyContribution:
       a.monthlyContribution === null ? null : Number(a.monthlyContribution),
   }));
+  const tableHash = assets.reduce(
+    (acc, a) =>
+      acc +
+      a.id +
+      Number(a.value) +
+      Number(a.monthlyContribution || 0) +
+      Number(a.growthRate || 0) +
+      a.name.length +
+      a.category.length,
+    0
+  );
 
-  const hasMore = page * pageSize < total;
+  const hasMore = page * pageSize < assets.length;
   const nextPage = hasMore ? page + 1 : null;
 
-  // ✅ CREATE with snapshotId
+  // CREATE with snapshotId
   async function create(formData: FormData) {
     "use server";
     const name = String(formData.get("name") || "");
@@ -139,7 +135,7 @@ export default async function AssetsPage({
     revalidatePath("/assets");
   }
 
-  // ✅ UPDATE within snapshot
+  // UPDATE within snapshot
   async function updateField(formData: FormData) {
     "use server";
     const id = Number(formData.get("id"));
@@ -171,6 +167,49 @@ export default async function AssetsPage({
     "use server";
     const id = Number(formData.get("id"));
     await prisma.asset.delete({ where: { id } });
+    revalidatePath("/assets");
+  }
+
+  // COPY FROM LAST MONTH
+  async function copyFromLastMonth() {
+    "use server";
+    let prevYear = year;
+    let prevMonth = month - 1;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear -= 1;
+    }
+
+    const prevSnapshot = await prisma.snapshot.findUnique({
+      where: { year_month: { year: prevYear, month: prevMonth } },
+      include: { assets: true },
+    });
+
+    if (!prevSnapshot) return;
+
+    const existingAssets = await prisma.asset.findMany({
+      where: { snapshotId: snapshot!.id },
+      select: { name: true },
+    });
+    const existingNames = new Set(existingAssets.map((a) => a.name));
+
+    const newAssets = prevSnapshot.assets.filter(
+      (a) => !existingNames.has(a.name)
+    );
+
+    if (newAssets.length > 0) {
+      await prisma.asset.createMany({
+        data: newAssets.map((a) => ({
+          name: a.name,
+          category: a.category,
+          value: a.value,
+          growthRate: a.growthRate,
+          monthlyContribution: a.monthlyContribution,
+          snapshotId: snapshot!.id,
+        })),
+      });
+    }
+
     revalidatePath("/assets");
   }
 
@@ -220,12 +259,17 @@ export default async function AssetsPage({
       </section>
 
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-medium mb-4 text-gray-900">
-          Assets for {month}/{year}
-        </h2>
-        <div
-          key={`${month}-${year}-${q}-${minVal}-${maxVal}-${sort}-${order}-${pageSize}-${colsArray.join()}`}
-        >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-medium mb-4 text-gray-900">
+            Assets for {month}/{year}
+          </h2>
+          <form action={copyFromLastMonth}>
+            <button type="submit" className="rounded border px-4 py-2">
+              Copy from Last Month
+            </button>
+          </form>
+        </div>
+        <div key={`${tableHash}`}>
           <InfiniteTable
             initialItems={assets}
             hasMore={hasMore}
