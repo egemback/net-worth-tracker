@@ -223,12 +223,13 @@ export default async function AssetsPage({
           <input name="name" placeholder="Name" className="input" required />
           <CategoryPicker
             name="category"
-            categories={await prisma.asset
+            categories={["Stocks", "Bonds", "Real Estate", "Cash", "Other"]}
+            /*categories={await prisma.asset
               .findMany({
                 select: { category: true },
                 distinct: ["category"],
               })
-              .then((res) => res.map((r) => r.category))}
+              .then((res) => res.map((r) => r.category))}*/
             placeholder="Category"
             className="w-full"
           />

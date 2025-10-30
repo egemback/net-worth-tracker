@@ -15,6 +15,21 @@ export default function CategoryPicker({
   placeholder = "Category",
   className = "",
 }: Props) {
+  return (
+    // categories are allowed to be Stocks, Bonds, Real Estate, etc.
+    <select
+      name={name}
+      className={`rounded border border-gray-300 p-2 ${className}`}
+    >
+      <option value="">{placeholder}</option>
+      {categories.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+    </select>
+  );
+
   const unique = useMemo(
     () =>
       Array.from(new Set(categories.filter(Boolean))).sort((a, b) =>

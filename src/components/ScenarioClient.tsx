@@ -15,6 +15,7 @@ import {
 import { Asset, Liability } from "@prisma/client";
 import { ZoomAndPan } from "./ZoomAndPan";
 import { calculateVaRAndES } from "@/utils/statistics";
+import { formatNumber } from "@/utils/formatters";
 
 interface ScenarioClientProps {
   baseNetWorth?: number;
@@ -49,17 +50,6 @@ export default function ScenarioClient({
       ES95: number;
     }[];
   }>(null);
-
-  // Helpers
-  function formatNumber(n: number) {
-    const sign = n < 0 ? "-" : "";
-    const absN = Math.abs(n);
-    if (absN >= 1_000_000)
-      return sign + (absN / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-    if (absN >= 1_000)
-      return sign + (absN / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
-    return sign + absN.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  }
 
   const boxMuller = useCallback((): number => {
     let u = 0,
@@ -197,6 +187,31 @@ export default function ScenarioClient({
       })),
     [series]
   );
+
+  const riskScores = useMemo(() => {
+    const assetRisk =
+      assets.reduce((total, asset) => {
+        return total + (asset.riskLevel || 3) * Number(asset.value);
+      }, 0) / (assets.reduce((sum, a) => sum + Number(a.value), 0) || 1);
+
+    const liquidityScore =
+      assets.reduce((total, asset) => {
+        return (
+          total + (asset.category === "Cash" ? 1 : 0) * Number(asset.value)
+        );
+      }, 0) / (assets.reduce((sum, a) => sum + Number(a.value), 0) || 1);
+
+    const debtRatio =
+      liabilities.reduce((sum, l) => sum + Number(l.balance), 0) /
+      (assets.reduce((sum, a) => sum + Number(a.value), 0) || 1);
+
+    return {
+      assetRisk: assetRisk / 5, // Normalize to 0-1
+      liquidityScore,
+      debtRatio,
+      overallRisk: (assetRisk / 5 + (1 - liquidityScore) + debtRatio) / 3,
+    };
+  }, [assets, liabilities]);
 
   const meanEndNetWorth = useMemo(() => {
     const paths = Array.from({ length: trials }, simulatePath);
@@ -432,43 +447,112 @@ export default function ScenarioClient({
       </div>
 
       {/* Value at Risk and Expected Shortfall */}
-      <div className="mt-8">
-        <h3 className="text-md font-semibold mb-3">
-          Risk Metrics (End of Forecast)
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 border rounded-lg shadow-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">
-                  Confidence Level
-                </th>
-                <th className="px-4 py-2 text-right text-sm font-semibold text-gray-600">
-                  Value at Risk (VaR)
-                </th>
-                <th className="px-4 py-2 text-right text-sm font-semibold text-gray-600">
-                  Expected Shortfall (ES)
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {riskMetrics.map(({ p, VaR, ES }) => (
-                <tr key={p}>
-                  <td className="px-4 py-2 text-sm text-gray-700">
-                    {(p * 100).toFixed(0)}%
-                  </td>
-                  <td className="px-4 py-2 text-sm text-right text-gray-700">
-                    {VaR.toLocaleString("sv-SE", { maximumFractionDigits: 0 })}{" "}
-                    SEK
-                  </td>
-                  <td className="px-4 py-2 text-sm text-right text-gray-700">
-                    {ES.toLocaleString("sv-SE", { maximumFractionDigits: 0 })}{" "}
-                    SEK
-                  </td>
+      <div className="mt-8 space-y-6">
+        <div>
+          <h3 className="text-md font-semibold mb-3">
+            Portfolio Risk Analysis
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="rounded-lg border p-4">
+              <div className="text-sm text-gray-600">Asset Risk</div>
+              <div className="text-lg font-semibold">
+                {(riskScores.assetRisk * 100).toFixed(1)}%
+              </div>
+              <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full"
+                  style={{ width: `${riskScores.assetRisk * 100}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-4">
+              <div className="text-sm text-gray-600">Liquidity Score</div>
+              <div className="text-lg font-semibold">
+                {(riskScores.liquidityScore * 100).toFixed(1)}%
+              </div>
+              <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-green-500 rounded-full"
+                  style={{ width: `${riskScores.liquidityScore * 100}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-4">
+              <div className="text-sm text-gray-600">Debt Ratio</div>
+              <div className="text-lg font-semibold">
+                {(riskScores.debtRatio * 100).toFixed(1)}%
+              </div>
+              <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-red-500 rounded-full"
+                  style={{ width: `${riskScores.debtRatio * 100}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-4">
+              <div className="text-sm text-gray-600">Overall Risk</div>
+              <div className="text-lg font-semibold">
+                {(riskScores.overallRisk * 100).toFixed(1)}%
+              </div>
+              <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${
+                    riskScores.overallRisk > 0.66
+                      ? "bg-red-500"
+                      : riskScores.overallRisk > 0.33
+                      ? "bg-yellow-500"
+                      : "bg-green-500"
+                  }`}
+                  style={{ width: `${riskScores.overallRisk * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-md font-semibold mb-3">
+            Risk Metrics (End of Forecast)
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 border rounded-lg shadow-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">
+                    Confidence Level
+                  </th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-600">
+                    Value at Risk (VaR)
+                  </th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-600">
+                    Expected Shortfall (ES)
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {riskMetrics.map(({ p, VaR, ES }) => (
+                  <tr key={p}>
+                    <td className="px-4 py-2 text-sm text-gray-700">
+                      {(p * 100).toFixed(0)}%
+                    </td>
+                    <td className="px-4 py-2 text-sm text-right text-gray-700">
+                      {VaR.toLocaleString("sv-SE", {
+                        maximumFractionDigits: 0,
+                      })}{" "}
+                      SEK
+                    </td>
+                    <td className="px-4 py-2 text-sm text-right text-gray-700">
+                      {ES.toLocaleString("sv-SE", { maximumFractionDigits: 0 })}{" "}
+                      SEK
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

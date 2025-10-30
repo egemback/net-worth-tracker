@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MonthSelector from "@/components/MonthSelector";
+import ToastHub from "@/components/ToastHub";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +45,12 @@ export default function RootLayout({
               <a href="/liabilities" className="hover:underline">
                 Liabilities
               </a>
+              <a href="/goals" className="hover:underline">
+                Goals
+              </a>
+              <a href="/budget" className="hover:underline">
+                Budget
+              </a>
               <a href="/scenarios" className="hover:underline">
                 Scenarios
               </a>
@@ -51,6 +58,7 @@ export default function RootLayout({
           </header>
           <MonthSelector />
           {children}
+          <ToastHub />
         </div>
       </body>
     </html>
