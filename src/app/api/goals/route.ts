@@ -19,19 +19,13 @@ export async function POST(request: Request) {
     return NextResponse.json(goal);
   } catch (error) {
     console.error("Error creating goal:", error);
-    return NextResponse.json(
-      { error: "Error creating goal" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error creating goal" }, { status: 500 });
   }
 }
 
 export async function GET() {
   try {
     const goals = await prisma.goal.findMany({
-      include: {
-        milestones: true,
-      },
       orderBy: {
         deadline: "asc",
       },

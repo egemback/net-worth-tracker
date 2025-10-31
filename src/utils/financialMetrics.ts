@@ -1,16 +1,12 @@
-import { Asset, Liability, Income, Expense } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { Asset, Liability } from "@prisma/client";
 
 export interface FinancialMetrics {
   netWorth: number;
   totalAssets: number;
   totalLiabilities: number;
   debtToAssetRatio: number;
-  debtToIncomeRatio: number;
-  savingsRate: number;
-  monthlyNetCashFlow: number;
   liquidityRatio: number;
-  monthlyExpenses: number;
-  emergencyFundRatio: number; // months of expenses covered by liquid assets
 }
 
 export interface RiskMetrics {
@@ -28,9 +24,7 @@ export interface RiskMetrics {
 
 export function calculateFinancialMetrics(
   assets: Asset[],
-  liabilities: Liability[],
-  income: Income[],
-  expenses: Expense[]
+  liabilities: Liability[]
 ): FinancialMetrics {
   // Calculate basic totals
   const totalAssets = assets.reduce(
@@ -43,35 +37,6 @@ export function calculateFinancialMetrics(
   );
   const netWorth = totalAssets - totalLiabilities;
 
-  // Calculate monthly income and expenses
-  const monthlyIncome = income
-    .filter((inc) => inc.isRecurring)
-    .reduce((sum, inc) => {
-      const amount = Number(inc.amount);
-      switch (inc.frequency) {
-        case "annual":
-          return sum + amount / 12;
-        case "quarterly":
-          return sum + amount / 3;
-        default:
-          return sum + amount; // monthly
-      }
-    }, 0);
-
-  const monthlyExpenses = expenses
-    .filter((exp) => exp.isRecurring)
-    .reduce((sum, exp) => {
-      const amount = Number(exp.amount);
-      switch (exp.frequency) {
-        case "annual":
-          return sum + amount / 12;
-        case "quarterly":
-          return sum + amount / 3;
-        default:
-          return sum + amount; // monthly
-      }
-    }, 0);
-
   // Calculate liquid assets
   const liquidAssets = assets
     .filter((asset) => asset.category === "Cash")
@@ -79,23 +44,14 @@ export function calculateFinancialMetrics(
 
   // Calculate ratios
   const debtToAssetRatio = totalLiabilities / totalAssets;
-  const debtToIncomeRatio = totalLiabilities / (monthlyIncome * 12);
-  const savingsRate = (monthlyIncome - monthlyExpenses) / monthlyIncome;
-  const monthlyNetCashFlow = monthlyIncome - monthlyExpenses;
   const liquidityRatio = liquidAssets / totalAssets;
-  const emergencyFundRatio = liquidAssets / monthlyExpenses; // months of expenses covered
 
   return {
     netWorth,
     totalAssets,
     totalLiabilities,
     debtToAssetRatio,
-    debtToIncomeRatio,
-    savingsRate,
-    monthlyNetCashFlow,
     liquidityRatio,
-    monthlyExpenses,
-    emergencyFundRatio,
   };
 }
 
@@ -165,31 +121,36 @@ export function calculateRiskMetrics(assets: Asset[]): RiskMetrics {
   };
 }
 
-export function calculateGoalProgress(
-  currentValue: number,
+export async function calculateGoalProgress(
   target: number,
-  startDate: Date,
-  deadline: Date
-): { progressPercentage: number; onTrack: boolean; projectedCompletion: Date } {
-  const progressPercentage = (currentValue / target) * 100;
+  type: string
+): Promise<{ progressPercentage: number; currentValue: number }> {
+  const snapshot = await prisma.snapshot.findFirst({
+    orderBy: [{ year: "desc" }, { month: "desc" }],
+    include: {
+      assets: true,
+      liabilities: true,
+    },
+  });
 
-  const totalDays =
-    (deadline.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-  const daysPassed =
-    (new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-  const expectedProgress = (daysPassed / totalDays) * 100;
+  const assetsValue =
+    snapshot?.assets.reduce((sum, asset) => sum + Number(asset.value), 0) || 0;
+  const liabilitiesValue =
+    snapshot?.liabilities.reduce(
+      (sum, liability) => sum + Number(liability.balance),
+      0
+    ) || 0;
+  const netWorth = assetsValue - liabilitiesValue;
 
-  const onTrack = progressPercentage >= expectedProgress;
-
-  // Calculate projected completion date based on current progress rate
-  const progressPerDay = progressPercentage / daysPassed;
-  const daysToCompletion = (100 - progressPercentage) / progressPerDay;
-  const projectedCompletion = new Date();
-  projectedCompletion.setDate(projectedCompletion.getDate() + daysToCompletion);
-
-  return {
-    progressPercentage,
-    onTrack,
-    projectedCompletion,
-  };
+  const currentValue =
+    type === "saving"
+      ? assetsValue
+      : type === "debtReduction"
+      ? liabilitiesValue
+      : netWorth;
+  const progressPercentage: number =
+    type === "debtReduction"
+      ? 1 - currentValue / target
+      : currentValue / target;
+  return { progressPercentage, currentValue };
 }

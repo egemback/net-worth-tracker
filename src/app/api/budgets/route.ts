@@ -42,9 +42,6 @@ export async function GET(request: Request) {
 
     const budgets = await prisma.budget.findMany({
       where,
-      include: {
-        expenses: true,
-      },
       orderBy: {
         category: "asc",
       },

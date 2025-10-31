@@ -1,23 +1,18 @@
-"use client";
-
-import { Goal, Milestone } from "@prisma/client";
+import { Goal } from "@prisma/client";
 import { calculateGoalProgress } from "@/utils/financialMetrics";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, formatPercentage } from "@/utils/formatters";
 
 interface GoalProgressCardProps {
-  goal: Goal & {
-    milestones: Milestone[];
-  };
+  goal: Goal;
 }
 
-export default function GoalProgressCard({ goal }: GoalProgressCardProps) {
-  const { progressPercentage, onTrack, projectedCompletion } =
-    calculateGoalProgress(
-      goal.currentValue || 0,
-      goal.target,
-      goal.startDate,
-      goal.deadline
-    );
+export default async function GoalProgressCard({
+  goal,
+}: GoalProgressCardProps) {
+  const { progressPercentage, currentValue } = await calculateGoalProgress(
+    goal.target,
+    goal.type
+  );
 
   const priorityColors = {
     1: "bg-blue-100 text-blue-800",
@@ -27,7 +22,7 @@ export default function GoalProgressCard({ goal }: GoalProgressCardProps) {
 
   const typeLabels = {
     netWorth: "Net Worth",
-    saving: "Saving",
+    saving: "Assets",
     debtReduction: "Debt Reduction",
     custom: "Custom",
   };
@@ -57,14 +52,12 @@ export default function GoalProgressCard({ goal }: GoalProgressCardProps) {
       <div className="mb-4">
         <div className="mb-1 flex items-center justify-between text-sm">
           <span>Progress</span>
-          <span>{Math.round(progressPercentage)}%</span>
+          <span>{formatPercentage(progressPercentage)}</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-gray-200">
           <div
-            className={`h-full rounded-full ${
-              onTrack ? "bg-green-500" : "bg-yellow-500"
-            }`}
-            style={{ width: `${progressPercentage}%` }}
+            className={`h-full rounded-full bg-green-500`}
+            style={{ width: `${formatPercentage(progressPercentage)}` }}
           />
         </div>
       </div>
@@ -76,48 +69,11 @@ export default function GoalProgressCard({ goal }: GoalProgressCardProps) {
         </div>
         <div>
           <dt className="text-gray-500">Current</dt>
-          <dd className="font-medium">
-            {formatCurrency(goal.currentValue || 0)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-gray-500">Deadline</dt>
-          <dd className="font-medium">
-            {new Date(goal.deadline).toLocaleDateString()}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-gray-500">Projected</dt>
-          <dd
-            className={`font-medium ${
-              onTrack ? "text-green-600" : "text-yellow-600"
-            }`}
-          >
-            {projectedCompletion.toLocaleDateString()}
-          </dd>
+          <dd className="font-medium">{formatCurrency(currentValue || 0)}</dd>
         </div>
       </dl>
 
       {goal.notes && <p className="mt-4 text-sm text-gray-500">{goal.notes}</p>}
-
-      {goal.milestones.length > 0 && (
-        <div className="mt-4">
-          <h4 className="mb-2 text-sm font-medium">Milestones</h4>
-          <ul className="space-y-2">
-            {goal.milestones.map((milestone) => (
-              <li
-                key={milestone.id}
-                className="flex items-center justify-between text-sm"
-              >
-                <span>{formatCurrency(milestone.target)}</span>
-                <span className="text-gray-500">
-                  {new Date(milestone.deadline).toLocaleDateString()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }

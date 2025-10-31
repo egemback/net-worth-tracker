@@ -15,8 +15,6 @@ model Snapshot {
   updatedAt   DateTime         @updatedAt
   assets      Asset[]
   liabilities Liability[]
-  income      Income[]
-  expenses    Expense[]
   netWorth    Float?
   cashFlow    Float?
   savingsRate Float?
@@ -64,17 +62,6 @@ model Goal {
   isCompleted Boolean   @default(false)
   priority    Int       @default(2)  // 1-3 scale
   notes       String?
-  milestones  Milestone[]
-}
-
-model Milestone {
-  id          Int       @id @default(autoincrement())
-  goalId      Int
-  goal        Goal      @relation(fields: [goalId], references: [id])
-  target      Float
-  deadline    DateTime
-  isCompleted Boolean   @default(false)
-  notes       String?
 }
 
 model Budget {
@@ -85,34 +72,8 @@ model Budget {
   planned     Float
   actual      Float?
   notes       String?
-  expenses    Expense[]
 
   @@unique([year, month, category])
-}
-
-model Income {
-  id          Int       @id @default(autoincrement())
-  snapshotId  Int
-  snapshot    Snapshot  @relation(fields: [snapshotId], references: [id])
-  source      String
-  amount      Float
-  isRecurring Boolean   @default(false)
-  frequency   String?   // monthly, quarterly, annual
-  notes       String?
-}
-
-model Expense {
-  id          Int       @id @default(autoincrement())
-  snapshotId  Int
-  snapshot    Snapshot  @relation(fields: [snapshotId], references: [id])
-  budgetId    Int?
-  budget      Budget?   @relation(fields: [budgetId], references: [id])
-  category    String
-  amount      Float
-  date        DateTime  @default(now())
-  isRecurring Boolean   @default(false)
-  frequency   String?   // monthly, quarterly, annual
-  notes       String?
 }
 
 model RiskProfile {

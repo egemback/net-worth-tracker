@@ -20,7 +20,6 @@ export default function AddGoalButton() {
         name: formData.get("name"),
         type: formData.get("type"),
         target: Number(formData.get("target")),
-        deadline: new Date(formData.get("deadline") as string),
         priority: Number(formData.get("priority")),
         notes: formData.get("notes"),
       }),
@@ -57,7 +56,6 @@ export default function AddGoalButton() {
                   />
                 </label>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Type
@@ -67,13 +65,12 @@ export default function AddGoalButton() {
                     className="mt-1 block w-full rounded-md border px-3 py-2"
                   >
                     <option value="netWorth">Net Worth</option>
-                    <option value="saving">Saving</option>
+                    <option value="saving">Assets</option>
                     <option value="debtReduction">Debt Reduction</option>
                     <option value="custom">Custom</option>
                   </select>
                 </label>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Target Amount (SEK)
@@ -85,19 +82,6 @@ export default function AddGoalButton() {
                   />
                 </label>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Deadline
-                  <input
-                    type="date"
-                    name="deadline"
-                    required
-                    className="mt-1 block w-full rounded-md border px-3 py-2"
-                  />
-                </label>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Priority
@@ -112,7 +96,6 @@ export default function AddGoalButton() {
                   </select>
                 </label>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Notes
@@ -123,7 +106,6 @@ export default function AddGoalButton() {
                   />
                 </label>
               </div>
-
               <div className="flex justify-end gap-3">
                 <button
                   type="button"

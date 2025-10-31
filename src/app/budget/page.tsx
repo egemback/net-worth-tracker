@@ -27,9 +27,6 @@ async function getBudget(year?: number, month?: number) {
       year: targetYear,
       month: targetMonth,
     },
-    include: {
-      expenses: true,
-    },
   });
 }
 
@@ -40,15 +37,6 @@ export default async function BudgetPage({
 }) {
   const year = searchParams?.year ? parseInt(searchParams.year) : undefined;
   const month = searchParams?.month ? parseInt(searchParams.month) : undefined;
-
-  const budgets = await getBudget(year, month);
-
-  // Create a map of categories to their budgets
-  const budgetMap = budgets.reduce((acc, budget) => {
-    acc[budget.category] = budget;
-    return acc;
-  }, {} as Record<string, Budget & { expenses: any[] }>);
-
   return (
     <main className="space-y-6">
       <div className="flex items-center justify-between">
@@ -58,11 +46,7 @@ export default async function BudgetPage({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CATEGORIES.map((category) => (
-          <BudgetCategoryCard
-            key={category}
-            category={category}
-            budget={budgetMap[category]}
-          />
+          <BudgetCategoryCard key={category} category={category} />
         ))}
       </div>
     </main>

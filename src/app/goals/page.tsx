@@ -4,9 +4,6 @@ import { prisma } from "@/lib/prisma";
 
 async function getGoals() {
   return prisma.goal.findMany({
-    include: {
-      milestones: true,
-    },
     orderBy: {
       deadline: "asc",
     },
