@@ -160,6 +160,30 @@ async function getData(year?: number, month?: number) {
   const financialMetrics = calculateFinancialMetrics(assets, liabilities);
   const riskMetrics = calculateRiskMetrics(assets);
 
+  const budgets = await prisma.budget.findMany({
+    where: {
+      year: queryYear,
+      month: queryMonth,
+    },
+  });
+
+  const budgetedMonthlyExpenses = budgets.reduce(
+    (sum, b) => sum + Number(b.planned),
+    0
+  );
+
+  const lastMonthsBudgets = await prisma.budget.findMany({
+    where: {
+      year: queryMonth === 1 ? queryYear - 1 : queryYear,
+      month: queryMonth === 1 ? 12 : queryMonth - 1,
+    },
+  });
+
+  const lastMonthsBudgetRealization = lastMonthsBudgets.reduce(
+    (sum, b) => sum + Number(b.actual || 0),
+    0
+  );
+
   return {
     ...financialMetrics,
     riskMetrics,
@@ -171,6 +195,8 @@ async function getData(year?: number, month?: number) {
     percentageGain6Months,
     percentageGain12Months,
     percentageGainThisYear,
+    budgetedMonthlyExpenses,
+    lastMonthsBudgetRealization,
   };
 }
 
@@ -215,6 +241,8 @@ export default async function Home({
     percentageGain6Months,
     percentageGain12Months,
     percentageGainThisYear,
+    budgetedMonthlyExpenses,
+    lastMonthsBudgetRealization,
   } = await getData(year, month);
 
   const history = await getHistory();
@@ -324,7 +352,17 @@ export default async function Home({
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Budgeted Expenses</span>
-              <span className="font-medium"></span>
+              <span className="font-medium">
+                {formatCurrency(budgetedMonthlyExpenses)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">
+                Last Months Budget Realization
+              </span>
+              <span className="font-medium">
+                {formatCurrency(lastMonthsBudgetRealization)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Liquidity Ratio</span>
