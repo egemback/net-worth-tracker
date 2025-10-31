@@ -5,8 +5,16 @@ export async function POST(request: Request) {
   try {
     const json = await request.json();
 
-    const goal = await prisma.goal.create({
-      data: {
+    const goal = await prisma.goal.upsert({
+      where: { name: json.name },
+      update: {
+        type: json.type,
+        target: json.target,
+        deadline: json.deadline,
+        priority: json.priority,
+        notes: json.notes,
+      },
+      create: {
         name: json.name,
         type: json.type,
         target: json.target,

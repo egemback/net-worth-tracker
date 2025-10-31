@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 async function getGoals() {
   return prisma.goal.findMany({
     orderBy: {
-      deadline: "asc",
+      priority: "asc",
     },
   });
 }
