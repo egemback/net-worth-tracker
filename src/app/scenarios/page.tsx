@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import ScenarioClient from "@/components/ScenarioClient";
 import { Suspense } from "react";
+import FireCalculator from "@/components/FireCalculator";
 
 async function getCurrentSnapshot({
   searchParams,
@@ -97,6 +98,10 @@ export default async function ScenariosPage({
           assets={assets}
           liabilities={liabilities}
         />
+      </section>
+
+      <section>
+        <FireCalculator netWorth={baseNetWorth} assets={totalAssets} />
       </section>
     </main>
   );
