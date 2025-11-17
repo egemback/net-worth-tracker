@@ -18,10 +18,10 @@ import {
 import { formatNumber } from "@/utils/formatters";
 import {
   BB_PERIOD,
-  calculateBollingerBands,
-  calculateRSI,
+  bollingerBands,
+  rsi,
   RSI_PERIOD,
-} from "@/utils/stockAnalysis";
+} from "@/utils/marketIndicators";
 import { ZoomAndPan } from "./ZoomAndPan";
 
 // Define the chart height and calculate the stacking dimensions
@@ -38,10 +38,43 @@ export default function StockChart({ stock }: { stock: any }) {
   const [data, setData] = useState<any[]>([]);
 
   useEffect(() => {
-    getHistoricalPrice(stock.symbol)
-      .then(calculateBollingerBands)
-      .then(calculateRSI)
-      .then(setData);
+    let cancelled = false;
+
+    async function load() {
+      const price = await getHistoricalPrice(stock.symbol);
+      const bb = bollingerBands(
+        price.map((d) => d.price ?? 0),
+        BB_PERIOD
+      );
+      const rsiValue = rsi(
+        price.map((d) => d.price ?? 0),
+        RSI_PERIOD
+      );
+
+      console.log("Price", price);
+      console.log("BB:", bb);
+      console.log("RSI:", rsiValue);
+
+      if (cancelled) return;
+
+      const merged = price.map((p, idx) => ({
+        date: p.date,
+        price: p.price,
+        volume: p.volume,
+        bb_upper: bb.upper[idx] ?? null,
+        bb_middle: bb.middle[idx] ?? null,
+        bb_lower: bb.lower[idx] ?? null,
+        rsi: rsiValue[idx] ?? null,
+      }));
+
+      setData(merged);
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [stock]);
 
   if (!data.length) return null;

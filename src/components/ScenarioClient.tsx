@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { Asset, Liability } from "@prisma/client";
 import { ZoomAndPan } from "./ZoomAndPan";
-import { calculateVaRAndES } from "@/utils/statistics";
+import { calculateVaRAndES } from "@/utils/portfolio";
 import { formatNumber } from "@/utils/formatters";
 
 interface ScenarioClientProps {

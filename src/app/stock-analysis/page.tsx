@@ -15,10 +15,6 @@ export default function StockAnalysisPage() {
       <h1 className="text-2xl font-semibold text-gray-900">
         Stock Analysis Tool
       </h1>
-      <p className="text-gray-600 text-sm">
-        Search for a company or ticker to analyze its performance, key metrics,
-        and valuation.
-      </p>
 
       <StockSearch onSelectStock={setSelectedStock} />
 

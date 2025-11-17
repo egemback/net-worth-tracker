@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  formatLabel,
-  formatNumber,
-  formatPercentage,
-} from "@/utils/formatters";
+import { formatLabel, formatNumber } from "@/utils/formatters";
 import {
   LineChart as RLineChart,
   Line,
