@@ -195,6 +195,19 @@ export default function InfiniteTable({
                   />
                 </td>
               )}
+              {visibleCols.has("riskLevel") && (
+                <td className="p-2">
+                  <EditableCell
+                    id={row.id}
+                    field="riskLevel"
+                    value={row.riskLevel ?? ""}
+                    action={onUpdateField}
+                    type="number"
+                    step="1"
+                    placeholder="0"
+                  />
+                </td>
+              )}
               {visibleCols.has("termMonths") && (
                 <td className="p-2">
                   <EditableCell

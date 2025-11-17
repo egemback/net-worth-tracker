@@ -54,6 +54,9 @@ export default function RootLayout({
               <a href="/scenarios" className="hover:underline">
                 Scenarios
               </a>
+              <a href="/stock-analysis" className="hover:underline">
+                Stock Analysis
+              </a>
             </nav>
           </header>
           <MonthSelector />

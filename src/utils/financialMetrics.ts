@@ -15,6 +15,7 @@ export interface RiskMetrics {
   expectedAnnualReturn: number;
   portfolioAllocation: {
     stocks: number;
+    etf: number;
     bonds: number;
     cash: number;
     realEstate: number;
@@ -65,6 +66,8 @@ export function calculateRiskMetrics(assets: Asset[]): RiskMetrics {
     (acc, asset) => {
       if (asset.category === "Stocks") {
         acc.stocks += Number(asset.value);
+      } else if (asset.category === "ETF") {
+        acc.etf += Number(asset.value);
       } else if (asset.category === "Bonds") {
         acc.bonds += Number(asset.value);
       } else if (asset.category === "Cash") {
@@ -78,6 +81,7 @@ export function calculateRiskMetrics(assets: Asset[]): RiskMetrics {
     },
     {
       stocks: 0,
+      etf: 0,
       bonds: 0,
       cash: 0,
       realEstate: 0,
@@ -108,6 +112,7 @@ export function calculateRiskMetrics(assets: Asset[]): RiskMetrics {
   // Estimate expected return based on allocation and historical averages
   const expectedReturn =
     allocations.stocks * 0.08 + // 8% historical stock return
+    allocations.etf * 0.07 + // 7% historical ETF return
     allocations.bonds * 0.03 + // 3% historical bond return
     allocations.cash * 0.01 + // 1% cash return
     allocations.realEstate * 0.06 + // 6% real estate return

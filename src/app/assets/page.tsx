@@ -3,6 +3,16 @@ import { revalidatePath } from "next/cache";
 import InfiniteTable from "@/components/InfiniteTable";
 import CategoryPicker from "@/components/CategoryPicker";
 
+// Risk levels for "Stocks", "ETF", "Bonds", "Real Estate", "Cash", "Other"
+const RISK_LEVELS = {
+  Stocks: 4,
+  ETF: 3,
+  Bonds: 2,
+  "Real Estate": 3,
+  Cash: 1,
+  Other: 5,
+};
+
 export default async function AssetsPage({
   searchParams,
 }: {
@@ -101,7 +111,7 @@ export default async function AssetsPage({
   async function create(formData: FormData) {
     "use server";
     const name = String(formData.get("name") || "");
-    const category = String(formData.get("category") || "");
+    const category = String(formData.get("category") || "Other");
 
     const normalize = (s: FormDataEntryValue | null) => {
       if (s == null) return 0;
@@ -121,6 +131,9 @@ export default async function AssetsPage({
         ? Number(String(formData.get("monthlyContribution")).replace(",", "."))
         : null;
 
+    const riskLevel =
+      RISK_LEVELS[category as keyof typeof RISK_LEVELS] || RISK_LEVELS.Other;
+
     await prisma.asset.create({
       data: {
         name,
@@ -128,6 +141,7 @@ export default async function AssetsPage({
         value,
         growthRate,
         monthlyContribution,
+        riskLevel: riskLevel,
         snapshotId: snapshot!.id,
       },
     });
@@ -223,7 +237,14 @@ export default async function AssetsPage({
           <input name="name" placeholder="Name" className="input" required />
           <CategoryPicker
             name="category"
-            categories={["Stocks", "Bonds", "Real Estate", "Cash", "Other"]}
+            categories={[
+              "Stocks",
+              "ETF",
+              "Bonds",
+              "Real Estate",
+              "Cash",
+              "Other",
+            ]}
             /*categories={await prisma.asset
               .findMany({
                 select: { category: true },
@@ -292,6 +313,9 @@ export default async function AssetsPage({
                 )}
                 {visibleCols.has("monthlyContribution") && (
                   <th className="p-2">Monthly +</th>
+                )}
+                {visibleCols.has("riskLevel") && (
+                  <th className="p-2">Risk Level +</th>
                 )}
               </>
             }
