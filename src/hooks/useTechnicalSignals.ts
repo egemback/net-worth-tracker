@@ -1,7 +1,14 @@
 import { useMemo } from "react";
 import { rsi, bollingerBands } from "@/utils/marketIndicators"; // your functions
 
-type AssetSignal = {
+type PricePoint = {
+  date: string;
+  price: number;
+  volume: number;
+  symbol: string;
+};
+
+export type AssetSignal = {
   symbol: string;
   rsi: number;
   bbUpper: number;
@@ -10,17 +17,18 @@ type AssetSignal = {
   latestPrice: number;
   rsiSignal: "long" | "short" | null;
   bbSignal: "long" | "short" | null;
+  recentPrices: number[];
 };
 
 export function useTechnicalSignals(
-  assets: { symbol: string; prices?: number[] }[]
+  assets: PricePoint[][],
+  lookback = 30
 ): AssetSignal[] {
-  const signals = useMemo(() => {
-    return assets.map((asset) => {
-      const prices = asset.prices ?? [];
-      if (prices.length === 0) {
+  return useMemo(() => {
+    return assets.map((stockData) => {
+      if (!stockData || stockData.length === 0) {
         return {
-          symbol: asset.symbol,
+          symbol: "UNKNOWN",
           rsi: NaN,
           bbUpper: NaN,
           bbMiddle: NaN,
@@ -28,21 +36,33 @@ export function useTechnicalSignals(
           latestPrice: NaN,
           rsiSignal: null,
           bbSignal: null,
+          recentPrices: [],
         } as AssetSignal;
       }
 
-      const rsiValues = rsi(prices, 14); // last 14 periods
+      // Extract price series
+      const prices = stockData.map((d) => d.price);
+      const recentPrices =
+        prices.length > lookback ? prices.slice(-lookback) : [...prices];
+
+      // Get latest candle
+      const latest = stockData[stockData.length - 1];
+      const latestPrice = latest.price;
+      const symbol = latest.symbol;
+
+      // RSI 14
+      const rsiValues = rsi(prices, 14);
       const latestRsi = rsiValues[rsiValues.length - 1];
 
-      const bb = bollingerBands(prices, 20, 2); // period 20, 2 std dev
+      // Bollinger Bands (20 period)
+      const bb = bollingerBands(prices, 20, 2);
       const latestBB = {
         upper: bb.upper[bb.upper.length - 1],
         middle: bb.middle[bb.middle.length - 1],
         lower: bb.lower[bb.lower.length - 1],
       };
 
-      const latestPrice = prices[prices.length - 1];
-
+      // Signals
       const rsiSignal: AssetSignal["rsiSignal"] =
         latestRsi < 30 ? "long" : latestRsi > 70 ? "short" : null;
 
@@ -54,7 +74,7 @@ export function useTechnicalSignals(
           : null;
 
       return {
-        symbol: asset.symbol,
+        symbol,
         rsi: latestRsi,
         bbUpper: latestBB.upper,
         bbMiddle: latestBB.middle,
@@ -62,9 +82,8 @@ export function useTechnicalSignals(
         latestPrice,
         rsiSignal,
         bbSignal,
+        recentPrices,
       } as AssetSignal;
     });
-  }, [assets]);
-
-  return signals;
+  }, [assets, lookback]);
 }

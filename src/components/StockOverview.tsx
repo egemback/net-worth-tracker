@@ -38,8 +38,8 @@ export default function StockOverview({ stock }: { stock: any }) {
           <strong>Country:</strong> {profile.country}
         </div>
         <div>
-          <strong>Market Cap:</strong> $
-          {Number(profile.mktCap).toLocaleString()}
+          <strong>Market Cap: </strong>
+          {Number(profile.marketCap).toLocaleString()}
         </div>
         <div>
           <strong>Currency:</strong> {profile.currency}

@@ -6,6 +6,7 @@ import PortfolioBuilder from "@/components/PortfolioBuilder";
 import EfficientFrontier from "@/components/EfficientFrontier";
 import { usePortfolioData } from "@/hooks/usePortfolioData";
 import { useTechnicalSignals } from "@/hooks/useTechnicalSignals";
+import { TechnicalSignalsPanel } from "@/components/TechnicalSignalsPanel";
 
 export default function PortfolioAnalysisPage() {
   const [portfolio, setPortfolio] = useState<string[]>([
@@ -50,20 +51,11 @@ export default function PortfolioAnalysisPage() {
         )}
       </div>
 
-      <div className="mt-4 space-y-2">
-        <h3 className="font-semibold">Technical Signals</h3>
-        {signals.map((s) => (
-          <div key={s.symbol} className="text-sm">
-            <strong>{s.symbol}</strong>:
-            {s.rsiSignal && (
-              <span className="text-green-600"> RSI → {s.rsiSignal}</span>
-            )}{" "}
-            {s.bbSignal && (
-              <span className="text-blue-600"> BB → {s.bbSignal}</span>
-            )}{" "}
-            (Price: {s.latestPrice.toFixed(2)}, RSI: {s.rsi.toFixed(2)})
-          </div>
-        ))}
+      <div className="mt-6">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Technical Signals
+        </h2>
+        <TechnicalSignalsPanel signals={signals} />
       </div>
     </div>
   );
