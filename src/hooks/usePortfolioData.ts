@@ -12,7 +12,6 @@ export function usePortfolioData(symbols: string[]) {
     if (!symbols.length) return;
 
     Promise.all(symbols.map((s) => getHistoricalPrice(s))).then((allData) => {
-      // allData: [{date, price, ...}, ...]
       const prices: number[][] = allData.map((d) => d.map((p: any) => p.price));
       const logRets = logReturns(prices);
 

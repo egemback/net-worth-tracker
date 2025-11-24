@@ -19,6 +19,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { Portfolio } from "@prisma/client";
 
 type Asset = {
   symbol: string;
@@ -28,62 +29,90 @@ type Asset = {
 };
 
 export default function PortfolioBuilder({
-  initial = ["AAPL", "MSFT"],
+  initial = [{ ticker: "AAPL" }],
   onChange,
 }: {
-  initial?: string[];
-  onChange?: (symbols: string[]) => void;
+  initial?: Portfolio[];
+  onChange?: (portfolio: Portfolio[]) => void;
 }) {
   // Initialize assets from initial prop
   const [assets, setAssets] = useState<Asset[]>(
-    initial.map((s) => ({ symbol: s }))
+    initial.map((s) => ({ symbol: s.ticker }))
   );
   const [weights, setWeights] = useState<number[]>(
-    initial.map(() => 1 / initial.length)
+    initial.map((s) => s?.weight || 1 / initial.length)
   );
   const [periodsPerYear] = useState(252);
 
-  // Sync when `initial` changes externally (e.g., StockSearch added a symbol)
+  // --- 1. SYNC ASSETS/WEIGHTS (Primary Fix) ---
   useEffect(() => {
-    // If the initial array differs from current symbols, replace assets
-    const currentSymbols = assets.map((a) => a.symbol);
-    const equal =
-      initial.length === currentSymbols.length &&
-      initial.every((s, i) => s === currentSymbols[i]);
-    if (!equal) {
-      setAssets(initial.map((s) => ({ symbol: s })));
-      setWeights(initial.map(() => 1 / Math.max(1, initial.length)));
+    // 1. Create a stable representation of the current local state (symbols and weights)
+    const currentPortfolioState = JSON.stringify(
+      assets.map((a, i) => ({ ticker: a.symbol, weight: weights[i] }))
+    );
+    // 2. Create a stable representation of the incoming props
+    const initialPortfolioProps = JSON.stringify(
+      initial.map((s) => ({
+        ticker: s.ticker,
+        weight: s.weight || 1 / Math.max(1, initial.length),
+      }))
+    );
+
+    // FIX: Only proceed if the incoming props are structurally different from the current local state
+    if (initialPortfolioProps !== currentPortfolioState) {
+      const newAssets = initial.map((s) => ({ symbol: s.ticker }));
+
+      // Merge: Try to keep existing prices/returns data for symbols that already exist
+      setAssets((prevAssets) => {
+        const mergedAssets = newAssets.map((newAsset) => {
+          const existingAsset = prevAssets.find(
+            (a) => a.symbol === newAsset.symbol
+          );
+          // Preserve existing price data if the symbol hasn't changed.
+          return existingAsset || newAsset;
+        });
+        return mergedAssets;
+      });
+
+      setWeights(
+        initial.map((s) => s.weight || 1 / Math.max(1, initial.length))
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial]);
 
-  // Fetch historical prices when new symbols appear (only once per symbol)
+  // --- 2. FETCH PRICES (Runs when assets list changes or new assets are added) ---
   useEffect(() => {
     let mounted = true;
-    const symbolsToFetch = assets
-      .map((a) => a.symbol)
-      .filter((sym, idx) => !assets[idx].prices);
 
-    // If there are no assets without prices, exit
-    if (!symbolsToFetch.length) return;
+    // Identify assets that exist in local state but are missing historical data
+    const assetsToFetch = assets.filter((a) => !a.prices);
+
+    if (assetsToFetch.length === 0) return; // All data present, exit.
 
     (async () => {
-      for (let i = 0; i < assets.length; i++) {
-        const a = assets[i];
-        if (a.prices) continue;
+      // Fetch prices for all assets that still need them
+      for (const a of assetsToFetch) {
+        if (!mounted) return;
+
         try {
           const data = await getHistoricalPrice(a.symbol);
-          // extract price field (try multiple keys)
+
           const pricesRaw = (data ?? []).map(
             (d: any) => d.price ?? d.close ?? d.adjClose ?? d.closePrice ?? 0
           );
-          // ensure we have oldest -> newest
           const prices = pricesRaw.slice().reverse();
           const returns = simpleReturns(prices);
+
           if (!mounted) return;
+
+          // Use functional update and findIndex for robust updates
           setAssets((prev) => {
+            const index = prev.findIndex((item) => item.symbol === a.symbol);
+            if (index === -1) return prev;
+
             const copy = [...prev];
-            copy[i] = { ...copy[i], name: a.symbol, prices, returns };
+            copy[index] = { ...copy[index], name: a.symbol, prices, returns };
             return copy;
           });
         } catch (err) {
@@ -95,14 +124,7 @@ export default function PortfolioBuilder({
     return () => {
       mounted = false;
     };
-    // Only depend on list of symbols to avoid infinite loops
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assets.map((a) => a.symbol).join(",")]);
-
-  // When assets change, notify parent (if provided)
-  useEffect(() => {
-    if (onChange) onChange(assets.map((a) => a.symbol));
-  }, [assets, onChange]);
+  }, [assets]);
 
   const commonReturns: number[][] = assets.map((a) =>
     simpleReturns(a.prices ?? [])
@@ -167,44 +189,56 @@ export default function PortfolioBuilder({
     };
   }, [weights, assets, covMatrix, commonReturns, periodsPerYear]);
 
-  // add asset (symbol) from outside
-  const addSymbol = (symbol: string) => {
-    setAssets((prev) => {
-      if (prev.some((a) => a.symbol === symbol)) return prev;
-      const next = [...prev, { symbol }];
-      // normalize weights
-      setWeights((w) => {
-        const newW = [...w, 1 / next.length];
-        const s = newW.reduce((a, b) => a + b, 0);
-        return newW.map((x) => x / s);
-      });
-      return next;
-    });
-  };
-
   const removeAt = (idx: number) => {
-    setAssets((prev) => {
-      const copy = prev.slice();
-      copy.splice(idx, 1);
-      // adjust weights proportionally
-      setWeights((w) => {
-        const newW = w.slice();
-        newW.splice(idx, 1);
-        const s = newW.reduce((a, b) => a + b, 0) || 1;
-        return newW.map((x) => x / s);
+    // 1. Calculate the new weights and new assets first
+    setAssets((prevAssets) => {
+      const newAssets = prevAssets.slice();
+      newAssets.splice(idx, 1);
+
+      // Use setWeights' functional update to calculate the new weights
+      setWeights((prevWeights) => {
+        const newWeights = prevWeights.slice();
+        newWeights.splice(idx, 1);
+        const sum = newWeights.reduce((a, b) => a + b, 0) || 1;
+        const finalWeights = newWeights.map((x) => x / sum);
+
+        // 2. Call onChange immediately after calculating the final state for this interaction
+        if (onChange) {
+          const updatedPortfolio = newAssets.map((asset, i) => ({
+            ticker: asset.symbol,
+            weight: finalWeights[i] ?? 0,
+            // NOTE: Include other required fields like ID/dates if necessary
+          })) as Portfolio[];
+          onChange(updatedPortfolio);
+        }
+        return finalWeights;
       });
-      return copy;
+
+      return newAssets;
     });
   };
 
   const onWeightChange = (i: number, pct: number) => {
     const val = Math.max(0, pct / 100);
-    setWeights((prev) => {
-      const copy = [...prev];
-      copy[i] = val;
-      const s = copy.reduce((a, b) => a + b, 0) || 1;
-      return copy.map((x) => x / s);
+
+    setWeights((prevWeights) => {
+      const copy = [...prevWeights];
+      copy[i] = val; // Set the new individual weight
+      const sum = copy.reduce((a, b) => a + b, 0) || 1;
+      const finalWeights = copy.map((x) => x / sum); // Normalize all weights
+
+      // 2. Call onChange immediately after normalization
+      if (onChange) {
+        const updatedPortfolio = assets.map((asset, j) => ({
+          ticker: asset.symbol,
+          weight: finalWeights[j] ?? 0,
+        })) as Portfolio[];
+        onChange(updatedPortfolio);
+      }
+      return finalWeights;
     });
+
+    // Note: setAssets is NOT called here, only setWeights.
   };
 
   return (

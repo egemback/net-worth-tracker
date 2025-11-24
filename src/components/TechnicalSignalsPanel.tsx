@@ -54,75 +54,102 @@ function getArrow(rec: string) {
 }
 
 export function TechnicalSignalsPanel({ signals }: { signals: AssetSignal[] }) {
+  if (!signals || signals.length === 0) {
+    return (
+      <div className="mt-6">
+        <h3 className="font-semibold text-lg">Technical Signals</h3>
+        <p className="text-gray-500 mt-2">
+          No technical signals available to display.
+        </p>
+      </div>
+    );
+  }
+  const isGridView = signals.length > 3;
+  const listContainerClass = "space-y-4";
+  const gridContainerClass =
+    "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3";
+
   return (
     <div className="mt-6 space-y-4">
       <h3 className="font-semibold text-lg">Technical Signals</h3>
 
-      {signals.map((s) => {
-        const rec = getRecommendation(s.rsiSignal, s.bbSignal);
-        const recLabel = getRecommendationLabel(rec);
-        const recColor = getRecommendationColor(rec);
-        const arrow = getArrow(rec);
+      <div className={isGridView ? gridContainerClass : listContainerClass}>
+        {signals.map((s) => {
+          const rec = getRecommendation(s.rsiSignal, s.bbSignal);
+          const recLabel = getRecommendationLabel(rec);
+          const recColor = getRecommendationColor(rec);
+          const arrow = getArrow(rec);
 
-        // microChart data (last 30 points)
-        const micro = s.recentPrices?.map((p, i) => ({ i, p })) ?? [];
+          // microChart data (last 30 points)
+          const micro = s.recentPrices?.map((p, i) => ({ i, p })) ?? [];
 
-        return (
-          <div
-            key={s.symbol}
-            className="p-4 border rounded-lg bg-white shadow-sm flex flex-col gap-3"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <strong className="text-gray-900 text-base">{s.symbol}</strong>
+          return (
+            <div
+              key={s.symbol}
+              className="p-4 border rounded-lg bg-white shadow-sm flex flex-col gap-3"
+              // In grid view, we ensure the height is consistent
+              style={isGridView ? { height: "100%" } : {}}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <strong className="text-gray-900 text-base">{s.symbol}</strong>
 
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${recColor}`}
-              >
-                {arrow}
-                {recLabel}
-              </span>
-            </div>
-
-            {/* Micro chart */}
-            <div className="h-14">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={micro}>
-                  <Line
-                    type="monotone"
-                    dataKey="p"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Stats */}
-            <div className="text-xs text-gray-700 flex justify-between">
-              <div>
-                Price: <strong>{s.latestPrice.toFixed(2)}</strong>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${recColor}`}
+                >
+                  {arrow}
+                  {recLabel}
+                </span>
               </div>
-              <div>
-                RSI: <strong>{s.rsi.toFixed(2)}</strong>
+
+              {/* Micro chart */}
+              <div className="h-14">
+                {micro.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={micro}>
+                      <Line
+                        type="monotone"
+                        dataKey="p"
+                        stroke="#2563eb"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-400">
+                    No price data
+                  </div>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="text-xs text-gray-700 flex justify-between">
+                <div>
+                  Price: <strong>{s.latestPrice.toFixed(2)}</strong>
+                </div>
+                <div>
+                  RSI: <strong>{s.rsi.toFixed(2)}</strong>
+                </div>
+              </div>
+
+              {/* Raw signals */}
+              <div className="flex gap-2 text-xs">
+                <span>
+                  RSI signal:{" "}
+                  <strong className="capitalize">
+                    {s.rsiSignal ?? "none"}
+                  </strong>
+                </span>
+                <span>
+                  BB signal:{" "}
+                  <strong className="capitalize">{s.bbSignal ?? "none"}</strong>
+                </span>
               </div>
             </div>
-
-            {/* Raw signals */}
-            <div className="flex gap-2 text-xs">
-              <span>
-                RSI signal:{" "}
-                <strong className="capitalize">{s.rsiSignal ?? "none"}</strong>
-              </span>
-              <span>
-                BB signal:{" "}
-                <strong className="capitalize">{s.bbSignal ?? "none"}</strong>
-              </span>
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
