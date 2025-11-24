@@ -70,19 +70,19 @@ export default function InfiniteTable({
   }, [loadMore]);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-left text-sm text-gray-900">
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
+      <table className="min-w-full text-left text-xs sm:text-sm text-gray-900">
         <thead className="bg-gray-50">
           <tr className="text-gray-700">
             {header}
-            <th className="p-2">Actions</th>
+            <th className="p-2 sticky right-0 bg-gray-50 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">Actions</th>
           </tr>
         </thead>
         <tbody>
           {items.map((row: any) => (
             <tr key={row.id} className="border-t hover:bg-gray-50 align-top">
               {visibleCols.has("name") && (
-                <td className="p-2">
+                <td className="p-2 max-w-[120px] sm:max-w-none">
                   <EditableCell
                     id={row.id}
                     field="name"
@@ -93,7 +93,7 @@ export default function InfiniteTable({
                 </td>
               )}
               {visibleCols.has("category") && (
-                <td className="p-2">
+                <td className="p-2 hidden sm:table-cell">
                   <EditableCell
                     id={row.id}
                     field="category"
@@ -118,7 +118,7 @@ export default function InfiniteTable({
                 </td>
               )}
               {visibleCols.has("growthRate") && (
-                <td className="p-2">
+                <td className="p-2 hidden md:table-cell">
                   <EditableCell
                     id={row.id}
                     field="growthRate"
@@ -132,7 +132,7 @@ export default function InfiniteTable({
                 </td>
               )}
               {visibleCols.has("monthlyContribution") && (
-                <td className="p-2">
+                <td className="p-2 hidden md:table-cell">
                   <EditableCell
                     id={row.id}
                     field="monthlyContribution"
@@ -164,7 +164,7 @@ export default function InfiniteTable({
                 </td>
               )}
               {visibleCols.has("interestRate") && (
-                <td className="p-2">
+                <td className="p-2 hidden md:table-cell">
                   <EditableCell
                     id={row.id}
                     field="interestRate"
@@ -178,7 +178,7 @@ export default function InfiniteTable({
                 </td>
               )}
               {visibleCols.has("monthlyPayment") && (
-                <td className="p-2">
+                <td className="p-2 hidden md:table-cell">
                   <EditableCell
                     id={row.id}
                     field="monthlyPayment"
@@ -209,7 +209,7 @@ export default function InfiniteTable({
                 </td>
               )}
               {visibleCols.has("termMonths") && (
-                <td className="p-2">
+                <td className="p-2 hidden lg:table-cell">
                   <EditableCell
                     id={row.id}
                     field="termMonths"
@@ -221,7 +221,7 @@ export default function InfiniteTable({
                   />
                 </td>
               )}
-              <td className="p-2">
+              <td className="p-2 sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
                 <button
                   onClick={async () => {
                     const fd = new FormData();
@@ -234,9 +234,9 @@ export default function InfiniteTable({
                       new CustomEvent("toast", { detail: "Deleted" })
                     );
                   }}
-                  className="text-red-600 text-xs underline"
+                  className="text-red-600 text-xs underline py-2 px-2 sm:px-1 touch-manipulation whitespace-nowrap"
                 >
-                  Delete
+                  Del
                 </button>
               </td>
             </tr>

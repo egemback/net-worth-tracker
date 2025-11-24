@@ -35,14 +35,14 @@ export default function AddGoalButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        className="rounded-lg bg-blue-600 px-4 py-3 sm:py-2 text-white hover:bg-blue-700 w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0"
       >
         Add Goal
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="mb-4 text-lg font-medium">Add New Goal</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -106,17 +106,17 @@ export default function AddGoalButton() {
                   />
                 </label>
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="rounded px-4 py-2 text-gray-600 hover:bg-gray-100"
+                  className="rounded px-4 py-3 sm:py-2 text-gray-600 hover:bg-gray-100 touch-manipulation min-h-[44px] sm:min-h-0 order-2 sm:order-1"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                  className="rounded bg-blue-600 px-4 py-3 sm:py-2 text-white hover:bg-blue-700 touch-manipulation min-h-[44px] sm:min-h-0 order-1 sm:order-2"
                 >
                   Save
                 </button>

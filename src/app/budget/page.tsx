@@ -99,13 +99,13 @@ export default async function BudgetPage({
   }, {} as Record<string, Budget>);
 
   return (
-    <main className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Budget</h1>
+    <main className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <h1 className="text-xl sm:text-2xl font-semibold">Budget</h1>
         <AddBudgetButton categories={CATEGORIES} year={year} month={month} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {CATEGORIES.map((category) => (
           <BudgetCategoryCard
             key={category}

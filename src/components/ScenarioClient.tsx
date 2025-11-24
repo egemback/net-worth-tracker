@@ -322,9 +322,9 @@ export default function ScenarioClient({
           />
         </label>
 
-        {/* Optimizer inputs */}
-        <div className="sm:col-span-3 flex items-center mt-2">
-          <span className="mr-2 text-sm">Optimize Volatility Range %:</span>
+        {/* Optimizer inputs
+        <div className="sm:col-span-3 flex flex-col sm:flex-row sm:items-center mt-2 gap-2">
+          <span className="text-sm">Optimize Volatility Range %:</span>
           <label className="text-sm">
             From
             <input
@@ -332,7 +332,7 @@ export default function ScenarioClient({
               type="number"
               value={minVol}
               onChange={(e) => setMinVol(Number(e.target.value))}
-            />
+              />
           </label>
           <label className="px-2 text-sm">
             to
@@ -341,16 +341,16 @@ export default function ScenarioClient({
               type="number"
               value={maxVol}
               onChange={(e) => setMaxVol(Number(e.target.value))}
-            />
+              />
           </label>
           <button
             onClick={() => runVolatilityOptimization()}
             className="ml-2 rounded bg-blue-600 px-3 py-1 text-white"
             disabled={optimizing}
-          >
-            {optimizing ? "Optimizing..." : "Find optimal volatility"}
+            >
+            {optimizing ? "Optimizing..." : "Optimize"}
           </button>
-        </div>
+        </div>*/}
       </div>
 
       {/* Chart */}

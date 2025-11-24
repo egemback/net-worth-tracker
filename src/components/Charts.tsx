@@ -74,20 +74,20 @@ export function LineChart({
     );
   }
   return (
-    <div className="w-full h-72">
+    <div className="w-full h-60 sm:h-72">
       <ResponsiveContainer>
         <RLineChart
           data={interpolatedAndCleanedData}
-          margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+          margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
         >
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xKey} />
-          <YAxis tickFormatter={formatNumber} />
+          <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
+          <YAxis tickFormatter={formatNumber} tick={{ fontSize: 12 }} />
           <Tooltip
             formatter={(value: number) => [formatNumber(value), "SEK"]}
             labelFormatter={(name: string) => [formatLabel(name)]}
           />
-          <Legend formatter={(name: string) => [formatLabel(name)]} />
+          <Legend formatter={(name: string) => [formatLabel(name)]} wrapperStyle={{ fontSize: '12px' }} />
           {yKeysArray.map((key, index) => (
             <Line
               key={key}
@@ -114,7 +114,7 @@ export function PieChart({
   valueKey: string;
 }) {
   return (
-    <div className="w-full h-72">
+    <div className="w-full h-60 sm:h-72">
       <ResponsiveContainer>
         <RPieChart>
           <Pie
@@ -123,7 +123,7 @@ export function PieChart({
             nameKey={nameKey}
             cx="50%"
             cy="50%"
-            outerRadius={100}
+            outerRadius={80}
           >
             {data.map((_: any, index: number) => (
               <Cell
@@ -136,7 +136,7 @@ export function PieChart({
             formatter={(value: number) => [value.toFixed(1) + "%"]}
             labelFormatter={(name: string) => [formatLabel(name)]}
           />
-          <Legend formatter={(name: string) => [formatLabel(name)]} />
+          <Legend formatter={(name: string) => [formatLabel(name)]} wrapperStyle={{ fontSize: '12px' }} />
         </RPieChart>
       </ResponsiveContainer>
     </div>

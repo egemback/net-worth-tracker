@@ -248,9 +248,36 @@ export default async function Home({
   const history = await getHistory();
 
   return (
-    <main className="space-y-6">
-      {/* Key Metrics */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <main className="space-y-4 sm:space-y-6">
+      {/* Key Metrics - Mobile: Compact single card, Desktop: Separate cards */}
+      <section className="block sm:hidden">
+        <div className="rounded-lg border bg-white p-3 shadow-sm space-y-2">
+          <div className="flex items-center justify-between py-2 border-b">
+            <span className="text-sm text-gray-600">Net Worth</span>
+            <span className="font-semibold text-lg">
+              {formatCurrency(netWorth)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b">
+            <span className="text-sm text-gray-600">Last Month</span>
+            <span className="font-semibold text-base">
+              {formatCurrency(gainFromLastMonth)}
+            </span>
+          </div>
+          <div className="py-2">
+            <PercentageGainSelector
+              percentageGainThisYear={percentageGainThisYear}
+              percentageGain12Months={percentageGain12Months}
+              percentageGain6Months={percentageGain6Months}
+              percentageGain3Months={percentageGain3Months}
+              percentageGain1Month={percentageGain1Month}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Desktop metrics */}
+      <section className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="rounded-lg border bg-white p-4 shadow-sm">
           <div className="text-sm text-gray-500">Net Worth</div>
           <div className="text-2xl font-semibold">
@@ -265,7 +292,7 @@ export default async function Home({
             {formatCurrency(gainFromLastMonth)}
           </div>
         </div>
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <div className="rounded-lg border bg-white p-4 shadow-sm lg:col-span-1 col-span-2">
           <PercentageGainSelector
             percentageGainThisYear={percentageGainThisYear}
             percentageGain12Months={percentageGain12Months}
@@ -277,17 +304,21 @@ export default async function Home({
       </section>
 
       {/* Charts */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <h3 className="mb-2 font-medium">Net Worth Trend</h3>
+      <section className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border bg-white p-3 sm:p-4 shadow-sm">
+          <h3 className="mb-3 text-base sm:text-lg font-medium">
+            Net Worth Trend
+          </h3>
           <LineChart
             data={history}
             xKey="month"
             yKeys={["netWorth", "assets", "liabilities"]}
           />
         </div>
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <h3 className="mb-2 font-medium">Asset Allocation</h3>
+        <div className="rounded-lg border bg-white p-3 sm:p-4 shadow-sm">
+          <h3 className="mb-3 text-base sm:text-lg font-medium">
+            Asset Allocation
+          </h3>
           <PieChart
             data={Object.entries(riskMetrics.portfolioAllocation).map(
               ([name, value]) => ({
@@ -302,21 +333,23 @@ export default async function Home({
       </section>
 
       {/* Detailed Metrics */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <h3 className="mb-4 font-medium">Assets & Liabilities</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between">
+      <section className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3">
+        <div className="rounded-lg border bg-white p-3 sm:p-4 shadow-sm">
+          <h3 className="mb-3 text-sm sm:text-base font-medium">
+            Assets & Liabilities
+          </h3>
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex justify-between text-sm">
               <span className="text-gray-600">Total Assets</span>
               <span className="font-medium">{formatCurrency(totalAssets)}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between text-sm">
               <span className="text-gray-600">Total Liabilities</span>
               <span className="font-medium">
                 {formatCurrency(totalLiabilities)}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between text-sm">
               <span className="text-gray-600">Debt to Asset Ratio</span>
               <span className="font-medium">
                 {formatPercentage(debtToAssetRatio)}
@@ -325,20 +358,22 @@ export default async function Home({
           </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <h3 className="mb-4 font-medium">Risk Analysis</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between">
+        <div className="rounded-lg border bg-white p-3 sm:p-4 shadow-sm">
+          <h3 className="mb-3 text-sm sm:text-base font-medium">
+            Risk Analysis
+          </h3>
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex justify-between text-sm">
               <span className="text-gray-600">Portfolio Diversification</span>
               <span className="font-medium">
                 {formatPercentage(riskMetrics.portfolioDiversification)}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between text-sm">
               <span className="text-gray-600">Risk Level</span>
               <span className="font-medium">{riskMetrics.riskLevel}/5</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between text-sm">
               <span className="text-gray-600">Expected Return</span>
               <span className="font-medium">
                 {formatPercentage(riskMetrics.expectedAnnualReturn)}
@@ -347,24 +382,26 @@ export default async function Home({
           </div>
         </div>
 
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <h3 className="mb-4 font-medium">Emergency Fund</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between">
+        <div className="rounded-lg border bg-white p-3 sm:p-4 shadow-sm">
+          <h3 className="mb-3 text-sm sm:text-base font-medium">
+            Emergency Fund
+          </h3>
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex justify-between text-sm">
               <span className="text-gray-600">Budgeted Expenses</span>
               <span className="font-medium">
                 {formatCurrency(budgetedMonthlyExpenses)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">
-                Last Months Budget Realization
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600 text-xs sm:text-sm">
+                Last Month Budget
               </span>
               <span className="font-medium">
                 {formatCurrency(lastMonthsBudgetRealization)}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between text-sm">
               <span className="text-gray-600">Liquidity Ratio</span>
               <span className="font-medium">
                 {formatPercentage(liquidityRatio)}

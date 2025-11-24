@@ -1,8 +1,18 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function MonthSelector() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640); // sm breakpoint = 640px
+    handleResize(); // initial check
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -68,28 +78,29 @@ export default function MonthSelector() {
     currentMonth === currentDate.getMonth() + 1;
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-white p-3 shadow-sm">
+    <div className="flex flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3 rounded-lg border bg-white p-3 shadow-sm">
       <button
         onClick={handlePrevMonth}
-        className="rounded bg-gray-100 px-3 py-1 hover:bg-gray-200"
+        className="shrink-0 rounded bg-gray-100 px-4 py-2.5 sm:px-3 sm:py-1 hover:bg-gray-200 touch-manipulation min-h-[44px] sm:min-h-0"
       >
         ← Prev
       </button>
-      <div className="text-center font-medium min-w-[150px]">
+      <div className="text-center font-medium py-2 sm:py-0 sm:min-w-[150px]">
         {months[currentMonth - 1]} {currentYear}
       </div>
-      {!isCurrentMonth && (
+      {(!isCurrentMonth || isMobile) && (
         <button
           onClick={handleNextMonth}
-          className="rounded bg-gray-100 px-3 py-1 hover:bg-gray-200"
+          className="shrink-0 rounded bg-gray-100 px-4 py-2.5 sm:px-3 sm:py-1 hover:bg-gray-200 touch-manipulation min-h-[44px] sm:min-h-0"
+          disabled={isCurrentMonth}
         >
           Next →
         </button>
       )}
-      {!isCurrentMonth && (
+      {!isCurrentMonth && !isMobile && (
         <button
           onClick={handleCurrentMonth}
-          className="rounded bg-blue-600 px-3 py-1 text-white hover:bg-blue-700"
+          className="shrink-0 rounded bg-blue-600 px-4 py-2.5 sm:px-3 sm:py-1 text-white hover:bg-blue-700 touch-manipulation min-h-[44px] sm:min-h-0"
         >
           Current Month
         </button>

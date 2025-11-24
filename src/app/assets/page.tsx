@@ -228,12 +228,12 @@ export default async function AssetsPage({
   }
 
   return (
-    <main className="space-y-8">
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-medium mb-4 text-gray-900">
+    <main className="space-y-4 sm:space-y-8">
+      <section className="rounded-2xl border bg-white p-4 sm:p-6 shadow-sm">
+        <h2 className="text-base sm:text-lg font-medium mb-4 text-gray-900">
           Add Asset for {month}/{year}
         </h2>
-        <form action={create} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+        <form action={create} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <input name="name" placeholder="Name" className="input" required />
           <CategoryPicker
             name="category"
@@ -276,17 +276,22 @@ export default async function AssetsPage({
             placeholder="Monthly +"
             className="input"
           />
-          <button className="rounded border px-4 py-2">Add</button>
+          <button className="rounded border px-4 py-3 sm:py-2 touch-manipulation min-h-[44px] sm:min-h-0">Add</button>
         </form>
       </section>
 
-      <section className="rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium mb-4 text-gray-900">
-            Assets for {month}/{year}
-          </h2>
+      <section className="rounded-2xl border bg-white p-4 sm:p-6 shadow-sm">
+        <div className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base sm:text-lg font-medium text-gray-900">
+              Assets for {month}/{year}
+            </h2>
+            <p className="text-xs text-gray-500 mt-1 md:hidden">
+              Tap to edit • Scroll right for more →
+            </p>
+          </div>
           <form action={copyFromLastMonth}>
-            <button type="submit" className="rounded border px-4 py-2">
+            <button type="submit" className="rounded border px-4 py-3 sm:py-2 w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0">
               Copy from Last Month
             </button>
           </form>
@@ -305,17 +310,17 @@ export default async function AssetsPage({
               <>
                 {visibleCols.has("name") && <th className="p-2">Name</th>}
                 {visibleCols.has("category") && (
-                  <th className="p-2">Category</th>
+                  <th className="p-2 hidden sm:table-cell">Category</th>
                 )}
                 {visibleCols.has("value") && <th className="p-2">Balance</th>}
                 {visibleCols.has("growthRate") && (
-                  <th className="p-2">Growth %/yr</th>
+                  <th className="p-2 hidden md:table-cell">Growth %/yr</th>
                 )}
                 {visibleCols.has("monthlyContribution") && (
-                  <th className="p-2">Monthly +</th>
+                  <th className="p-2 hidden md:table-cell">Monthly +</th>
                 )}
                 {visibleCols.has("riskLevel") && (
-                  <th className="p-2">Risk Level +</th>
+                  <th className="p-2 hidden lg:table-cell">Risk Level</th>
                 )}
               </>
             }

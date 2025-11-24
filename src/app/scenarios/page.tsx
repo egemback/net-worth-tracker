@@ -46,26 +46,53 @@ async function Summary({
   const netWorth = totalAssets - totalLiabilities;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <div className="rounded-lg border bg-white p-4 shadow-sm">
-        <div className="text-sm text-gray-500">Assets</div>
-        <div className="text-2xl font-semibold">
-          {totalAssets.toLocaleString()}
+    <section>
+      {/* Desktop / tablet: grid */}
+      <div className="hidden sm:grid grid-cols-3 gap-4">
+        <div className="rounded-lg border bg-white p-4 shadow-sm">
+          <div className="text-sm text-gray-500">Assets</div>
+          <div className="text-2xl font-semibold">
+            {totalAssets.toLocaleString()}
+          </div>
+        </div>
+        <div className="rounded-lg border bg-white p-4 shadow-sm">
+          <div className="text-sm text-gray-500">Liabilities</div>
+          <div className="text-2xl font-semibold">
+            {totalLiabilities.toLocaleString()}
+          </div>
+        </div>
+        <div className="rounded-lg border bg-white p-4 shadow-sm">
+          <div className="text-sm text-gray-500">Net Worth</div>
+          <div className="text-2xl font-semibold">
+            {netWorth.toLocaleString()}
+          </div>
         </div>
       </div>
-      <div className="rounded-lg border bg-white p-4 shadow-sm">
-        <div className="text-sm text-gray-500">Liabilities</div>
-        <div className="text-2xl font-semibold">
-          {totalLiabilities.toLocaleString()}
+
+      {/* Mobile: stacked */}
+      <section className="block sm:hidden">
+        <div className="rounded-lg border bg-white p-3 shadow-sm space-y-2">
+          <div className="flex items-center justify-between py-2 border-b">
+            <span className="text-sm text-gray-600">Assets</span>
+            <span className="font-semibold text-lg">
+              {totalAssets.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b">
+            <span className="text-sm text-gray-600">Liabilities</span>
+            <span className="font-semibold text-lg">
+              {totalLiabilities.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b">
+            <span className="text-sm text-gray-600">Net Worth</span>
+            <span className="font-semibold text-lg">
+              {netWorth.toLocaleString()}
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="rounded-lg border bg-white p-4 shadow-sm">
-        <div className="text-sm text-gray-500">Net Worth</div>
-        <div className="text-2xl font-semibold">
-          {netWorth.toLocaleString()}
-        </div>
-      </div>
-    </div>
+      </section>
+    </section>
   );
 }
 
