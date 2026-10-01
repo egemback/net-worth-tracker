@@ -23,7 +23,6 @@
 # misc
 .DS_Store
 *.pem
-dev.db
 
 # debug
 npm-debug.log*
@@ -42,5 +41,4 @@ yarn-error.log*
 next-env.d.ts
 
 # prisma
-dev.db
 /prisma/migrations
