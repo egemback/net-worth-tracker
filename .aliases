@@ -1,0 +1,88 @@
+# ~/.aliases — compatible with both Bash and Zsh
+
+# ------------------------------------------------------------------------------
+# Navigation
+# ------------------------------------------------------------------------------
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+alias .....="cd ../../../.."
+alias -- -="cd -"
+
+# ------------------------------------------------------------------------------
+# Listing & File Inspection
+# ------------------------------------------------------------------------------
+# Enable colors across GNU ls and macOS/BSD ls
+if ls --color > /dev/null 2>&1; then
+    alias ls="ls --color=auto"
+else
+    alias ls="ls -G"
+fi
+
+alias ll="ls -lAh"      # Detailed list with hidden files, human-readable sizes
+alias la="ls -A"        # All files except . and ..
+alias l="ls -CF"
+
+# ------------------------------------------------------------------------------
+# Safety Guards
+# ------------------------------------------------------------------------------
+alias rm="rm -i"
+alias cp="cp -i"
+alias mv="mv -i"
+alias ln="ln -i"
+
+# ------------------------------------------------------------------------------
+# Git Shortcuts
+# ------------------------------------------------------------------------------
+alias g="git"
+alias gst="git status -sb"
+alias ga="git add"
+alias gaa="git add --all"
+alias gc="git commit -v"
+alias gcm="git commit -m"
+alias gca="git commit -v -a"
+alias gco="git checkout"
+alias gcb="git checkout -b"
+alias gb="git branch"
+alias gba="git branch -a"
+alias gp="git push"
+alias gpf="git push --force-with-lease"
+alias gl="git pull --prune"
+alias gd="git diff"
+alias gds="git diff --staged"
+alias glog="git log --oneline --decorate --graph -n 20"
+
+# ------------------------------------------------------------------------------
+# System & Resource Monitoring
+# ------------------------------------------------------------------------------
+alias df="df -h"
+alias du="du -h -c"
+alias top="htop 2>/dev/null || top"
+alias mem="free -m -t 2>/dev/null || vm_stat"
+
+# ------------------------------------------------------------------------------
+# Networking
+# ------------------------------------------------------------------------------
+alias myip="curl -s https://icanhazip.com || curl -s https://ifconfig.me"
+alias localip="ipconfig getifaddr en0 2>/dev/null || hostname -I | awk '{print \$1}'"
+alias ports="netstat -tulanp 2>/dev/null || lsof -iTCP -sTCP:LISTEN -P"
+alias ping="ping -c 5"
+
+# ------------------------------------------------------------------------------
+# Containers (Docker)
+# ------------------------------------------------------------------------------
+alias d="docker"
+alias dps="docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+alias dpsa="docker ps -a"
+alias dstop="docker stop \$(docker ps -q)"
+alias dprune="docker system prune -af --volumes"
+alias dc="docker compose"
+
+# ------------------------------------------------------------------------------
+# Shell Convenience & Quick Edits
+# ------------------------------------------------------------------------------
+alias reload="[ -n \"\$ZSH_VERSION\" ] && source ~/.zshrc || source ~/.bashrc"
+alias cls="clear"
+alias path='echo -e "${PATH//:/\\n}"'
+alias grep="grep --color=auto"
+alias mkdir="mkdir -pv"
